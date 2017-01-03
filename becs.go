@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/aws/aws-sdk-go/aws/session"
-	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/ecs"
+"github.com/aws/aws-sdk-go/aws/session"
+"fmt"
+"github.com/aws/aws-sdk-go/aws"
+"github.com/aws/aws-sdk-go/service/ecs"
 )
 
 func main() {
@@ -23,8 +23,8 @@ func main() {
 
 	params := &ecs.ListClustersInput{
 		//Clusters: []*string{
-			//aws.String("String"), // Required
-			// More values...
+		//aws.String("String"), // Required
+		// More values...
 		//},
 	}
 
@@ -54,3 +54,4 @@ func main() {
 
 	//fmt.Println(resp)
 }
+
