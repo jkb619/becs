@@ -11,6 +11,6 @@ becs
     ssh <host_blob> <cmd>
     scp <host_blob> <cmd>
   cluster
-    list
+    list <-v also sub hosts, -vv hosts+containers>
     ssh <cluster_blob> <cmd>
     scp <cluster_blob> <cmd>

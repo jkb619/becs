@@ -7,6 +7,14 @@ import (
 	"fmt"
 )
 
+type Container struct {
+	Name string
+}
+
+type Host struct {
+	Name string
+}
+
 type Cluster struct {
 	Arn string
 	Name string
@@ -14,9 +22,11 @@ type Cluster struct {
 
 type Clusters struct {
 	ClusterList []Cluster
+	HostList []Host
+	ContainerList []Container
 }
 
-func (c *Clusters) GetInfo(svc *ecs.ECS) {
+func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
 	list_params := &ecs.ListClustersInput{
 		//Clusters: []*string{
 		//aws.String("String"), // Required
@@ -54,7 +64,7 @@ func cluster_list() {
 		return
 	}
 	svc := ecs.New(sess)
-	clusters.GetInfo(svc)
+	clusters.GetClusterInfo(svc)
 	for _, element := range clusters.ClusterList {
 		fmt.Println(element.Name)
 	}
