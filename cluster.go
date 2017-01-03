@@ -7,51 +7,55 @@ import (
 	"fmt"
 )
 
-func cluster_list() {
+type Cluster struct {
+	Arn string
+	Name string
+}
 
-	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
-	if err != nil {
-		fmt.Println("failed to create session,", err)
-		return
-	}
+type Clusters struct {
+	ClusterList []Cluster
+}
 
-	//Specify profile to load for the session's config
-	//sess, err := session.NewSessionWithOptions(session.Options{
-	//	Profile: "default",
-	//})
-
-	svc := ecs.New(sess)
-
-	params := &ecs.ListClustersInput{
+func (c *Clusters) GetInfo(svc *ecs.ECS) {
+	list_params := &ecs.ListClustersInput{
 		//Clusters: []*string{
 		//aws.String("String"), // Required
 		// More values...
 		//},
 	}
-
 	pageNum := 0
-	clusterList := make([]string, 10)
-	err2 := svc.ListClustersPages(params,
+	err := svc.ListClustersPages(list_params,
 		func(page *ecs.ListClustersOutput, lastPage bool) bool {
 			pageNum++
-			for _, name := range page.ClusterArns {
-				clusterList = append(clusterList, *name)
+			for _, arn := range page.ClusterArns {
+				describe_params := &ecs.DescribeClustersInput{
+					Clusters: []*string{
+						aws.String(*arn), // Required
+						// More values...
+					},
+				}
+				name,_ := svc.DescribeClusters(describe_params)
+				c.ClusterList=append(c.ClusterList,Cluster{*arn,*name.Clusters[0].ClusterName})
 			}
-			//fmt.Println(page)
 			return pageNum > 0
 		})
 
-	if err2 != nil {
-		// Print the error, cast err to awserr.Error to get the Code and
-		// Message from an error.
-		fmt.Println(err2.Error())
+	if err != nil {
+		fmt.Println(err.Error())
 		return
 	}
+}
 
-	// Pretty-print the response data.
-	for _, element := range clusterList {
-		fmt.Println(element)
+func cluster_list() {
+	clusters := new(Clusters)
+	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
+	if err != nil {
+		fmt.Println("failed to create session,", err)
+		return
 	}
-
-	//fmt.Println(resp)
+	svc := ecs.New(sess)
+	clusters.GetInfo(svc)
+	for _, element := range clusters.ClusterList {
+		fmt.Println(element.Name)
+	}
 }
