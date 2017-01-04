@@ -62,7 +62,7 @@ func Cluster_list() {
 		fmt.Println(element.Name)
 //		fmt.Println(element.Arn)
 		for _,hostElement := range element.HostList {
-			fmt.Println("-----",hostElement.Arn)
+			fmt.Println("-----",hostElement.Arn," : ",hostElement.Ec2Id)
 		}
 	}
 }
