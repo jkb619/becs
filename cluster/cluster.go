@@ -5,13 +5,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/aws"
 	"fmt"
-	"becs/host"
+//	"becs/host"
+	"becs/task"
 )
 
 type Cluster struct {
 	Arn string
 	Name string
-	HostList []host.Host
+	TaskList []task.Task
+//	HostList []host.Host
 }
 
 type Clusters struct {
@@ -20,10 +22,6 @@ type Clusters struct {
 
 func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
 	list_params := &ecs.ListClustersInput{
-		//Clusters: []*string{
-		//aws.String("String"), // Required
-		// More values...
-		//},
 	}
 	pageNum := 0
 	err := svc.ListClustersPages(list_params,
@@ -32,13 +30,13 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
 			for _, arn := range page.ClusterArns {
 				describe_params := &ecs.DescribeClustersInput{
 					Clusters: []*string{
-						aws.String(*arn), // Required
-						// More values...
+						aws.String(*arn),
 					},
 				}
 				name,_ := svc.DescribeClusters(describe_params)
-				hostList := host.GetHostInfo(svc,*name.Clusters[0].ClusterName)
-				c.ClusterList=append(c.ClusterList,Cluster{*arn,*name.Clusters[0].ClusterName,hostList})
+//				hostList := host.GetHostInfo(svc,*name.Clusters[0].ClusterName)
+				taskList := task.GetTaskInfo(svc,*name.Clusters[0].ClusterName)
+				c.ClusterList=append(c.ClusterList,Cluster{*arn,*name.Clusters[0].ClusterName,taskList})//,hostList})
 			}
 			return pageNum > 0
 		})
@@ -50,19 +48,21 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
 }
 
 func Cluster_list() {
-	clusters := new(Clusters)
+	clust := new(Clusters)
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
 		return
 	}
 	svc := ecs.New(sess)
-	clusters.GetClusterInfo(svc)
-	for _, element := range clusters.ClusterList {
+	clust.GetClusterInfo(svc)
+	for _, element := range clust.ClusterList {
 		fmt.Println(element.Name)
-//		fmt.Println(element.Arn)
-		for _,hostElement := range element.HostList {
-			fmt.Println("-----",hostElement.Arn," : ",hostElement.Ec2Id)
+		for _,taskElement := range element.TaskList {
+//			fmt.Println("-----",taskElement.Arn)//," : ",taskElement.Ec2Id)
+			fmt.Println("-----",taskElement.Name)
+//			fmt.Println("-----",taskElement.ClusterArn)
+			fmt.Println("----------",taskElement.ContainerInstanceArn," : ",taskElement.ContainerEc2Id)
 		}
 	}
 }
