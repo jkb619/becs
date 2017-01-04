@@ -1,4 +1,4 @@
-package main
+package cluster
 
 import (
 	"github.com/aws/aws-sdk-go/service/ecs"
@@ -9,21 +9,23 @@ import (
 
 type Container struct {
 	Name string
+	Arn string
 }
 
 type Host struct {
 	Name string
+	Arn string
+	ContainerList []Container
 }
 
 type Cluster struct {
 	Arn string
 	Name string
+	HostList []Host
 }
 
 type Clusters struct {
 	ClusterList []Cluster
-	HostList []Host
-	ContainerList []Container
 }
 
 func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
@@ -56,7 +58,7 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
 	}
 }
 
-func cluster_list() {
+func Cluster_list() {
 	clusters := new(Clusters)
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
@@ -67,5 +69,6 @@ func cluster_list() {
 	clusters.GetClusterInfo(svc)
 	for _, element := range clusters.ClusterList {
 		fmt.Println(element.Name)
+		fmt.Println(element.Arn)
 	}
 }
