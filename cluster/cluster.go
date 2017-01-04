@@ -8,6 +8,7 @@ import (
 //	"becs/host"
 	"becs/task"
 	"strings"
+	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
 type Cluster struct {
@@ -21,7 +22,7 @@ type Clusters struct {
 	ClusterList []Cluster
 }
 
-func (c *Clusters) GetClusterInfo(svc *ecs.ECS,clusterFilter string, taskFilter string) {
+func (c *Clusters) GetClusterInfo(svc *ecs.ECS,ec2_svc *ec2.EC2,clusterFilter string, taskFilter string) {
 	list_params := &ecs.ListClustersInput{
 	}
 	pageNum := 0
@@ -37,7 +38,7 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS,clusterFilter string, taskFilter 
 					}
 					name, _ := svc.DescribeClusters(describe_params)
 					//				hostList := host.GetHostInfo(svc,*name.Clusters[0].ClusterName)
-					taskList := task.GetTaskInfo(svc,*name.Clusters[0].ClusterName,taskFilter)
+					taskList := task.GetTaskInfo(svc,ec2_svc,*name.Clusters[0].ClusterName,taskFilter)
 					c.ClusterList = append(c.ClusterList, Cluster{*arn, *name.Clusters[0].ClusterName, taskList}) //,hostList})
 				}
 			}
@@ -58,9 +59,10 @@ func Cluster_list() {
 		return
 	}
 	svc := ecs.New(sess)
-	clusterFilter:=""
+	ec2_svc := ec2.New(sess)
+	clusterFilter:="deploytest"
 	taskFilter:="zeppelin"
-	clust.GetClusterInfo(svc,clusterFilter,taskFilter)
+	clust.GetClusterInfo(svc,ec2_svc,clusterFilter,taskFilter)
 	for _, element := range clust.ClusterList {
 		fmt.Println(element.Name)
 		for _,taskElement := range element.TaskList {

@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/aws"
 	"strings"
+	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
 type Task struct {
@@ -33,7 +34,25 @@ func getContainerInstanceId(svc *ecs.ECS,clusterName string, containerInstanceAr
 	return *ec2id
 }
 
-func GetTaskInfo (svc *ecs.ECS, clusterName string,taskFilter string) []Task {
+func getContainerInstanceIpAddress(svc *ecs.ECS,ec2_svc *ec2.EC2, clusterName string, containerInstanceArn string) string {
+	ec2list_params := &ecs.DescribeContainerInstancesInput{
+		ContainerInstances: []*string{
+			aws.String(containerInstanceArn),
+		},
+		Cluster: aws.String(clusterName),
+	}
+	ec2list_resp, err := svc.DescribeContainerInstances(ec2list_params)
+	ec2id := ec2list_resp.ContainerInstances[0].Ec2InstanceId
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return ""
+	}
+
+	return *ec2id
+}
+
+func GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,taskFilter string) []Task {
 	list_params := &ecs.ListTasksInput{
 		Cluster: aws.String(clusterName),
 	}
