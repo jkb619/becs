@@ -7,6 +7,7 @@ import (
 	"fmt"
 //	"becs/host"
 	"becs/task"
+	"strings"
 )
 
 type Cluster struct {
@@ -20,7 +21,7 @@ type Clusters struct {
 	ClusterList []Cluster
 }
 
-func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
+func (c *Clusters) GetClusterInfo(svc *ecs.ECS,clusterFilter string, taskFilter string) {
 	list_params := &ecs.ListClustersInput{
 	}
 	pageNum := 0
@@ -28,15 +29,17 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
 		func(page *ecs.ListClustersOutput, lastPage bool) bool {
 			pageNum++
 			for _, arn := range page.ClusterArns {
-				describe_params := &ecs.DescribeClustersInput{
+				if strings.Contains(*arn,clusterFilter) {
+					describe_params := &ecs.DescribeClustersInput{
 					Clusters: []*string{
-						aws.String(*arn),
+					aws.String(*arn),
 					},
+					}
+					name, _ := svc.DescribeClusters(describe_params)
+					//				hostList := host.GetHostInfo(svc,*name.Clusters[0].ClusterName)
+					taskList := task.GetTaskInfo(svc,*name.Clusters[0].ClusterName,taskFilter)
+					c.ClusterList = append(c.ClusterList, Cluster{*arn, *name.Clusters[0].ClusterName, taskList}) //,hostList})
 				}
-				name,_ := svc.DescribeClusters(describe_params)
-//				hostList := host.GetHostInfo(svc,*name.Clusters[0].ClusterName)
-				taskList := task.GetTaskInfo(svc,*name.Clusters[0].ClusterName)
-				c.ClusterList=append(c.ClusterList,Cluster{*arn,*name.Clusters[0].ClusterName,taskList})//,hostList})
 			}
 			return pageNum > 0
 		})
@@ -55,7 +58,9 @@ func Cluster_list() {
 		return
 	}
 	svc := ecs.New(sess)
-	clust.GetClusterInfo(svc)
+	clusterFilter:=""
+	taskFilter:="zeppelin"
+	clust.GetClusterInfo(svc,clusterFilter,taskFilter)
 	for _, element := range clust.ClusterList {
 		fmt.Println(element.Name)
 		for _,taskElement := range element.TaskList {

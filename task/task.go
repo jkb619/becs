@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/aws"
+	"strings"
 )
 
 type Task struct {
@@ -32,7 +33,7 @@ func getContainerInstanceId(svc *ecs.ECS,clusterName string, containerInstanceAr
 	return *ec2id
 }
 
-func GetTaskInfo (svc *ecs.ECS, clusterName string) []Task {
+func GetTaskInfo (svc *ecs.ECS, clusterName string,taskFilter string) []Task {
 	list_params := &ecs.ListTasksInput{
 		Cluster: aws.String(clusterName),
 	}
@@ -53,12 +54,14 @@ func GetTaskInfo (svc *ecs.ECS, clusterName string) []Task {
 					fmt.Println(err.Error())
 					return false
 				}
-				clusterArn := *taskDesc_resp.Tasks[0].ClusterArn
-				containerInstanceArn := *taskDesc_resp.Tasks[0].ContainerInstanceArn
-
 				taskName := *taskDesc_resp.Tasks[0].Containers[0].Name
-				containerInstanceId := getContainerInstanceId(svc,clusterName,containerInstanceArn)
-				taskList=append(taskList,Task{taskName,*taskArn,clusterArn,containerInstanceArn,containerInstanceId})
+				if strings.Contains(taskName,taskFilter) {
+					clusterArn := *taskDesc_resp.Tasks[0].ClusterArn
+					containerInstanceArn := *taskDesc_resp.Tasks[0].ContainerInstanceArn
+
+					containerInstanceId := getContainerInstanceId(svc, clusterName, containerInstanceArn)
+					taskList = append(taskList, Task{taskName, *taskArn, clusterArn, containerInstanceArn, containerInstanceId})
+				}
 			}
 			return pageNum > 0
 		})
