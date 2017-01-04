@@ -5,23 +5,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/aws"
 	"fmt"
+	"becs/host"
 )
-
-type Container struct {
-	Name string
-	Arn string
-}
-
-type Host struct {
-	Name string
-	Arn string
-	ContainerList []Container
-}
 
 type Cluster struct {
 	Arn string
 	Name string
-	HostList []Host
+	HostList []host.Host
 }
 
 type Clusters struct {
@@ -47,7 +37,8 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS) {
 					},
 				}
 				name,_ := svc.DescribeClusters(describe_params)
-				c.ClusterList=append(c.ClusterList,Cluster{*arn,*name.Clusters[0].ClusterName})
+				hostList := host.GetHostInfo(svc,*name.Clusters[0].ClusterName)
+				c.ClusterList=append(c.ClusterList,Cluster{*arn,*name.Clusters[0].ClusterName,hostList})
 			}
 			return pageNum > 0
 		})
@@ -69,6 +60,9 @@ func Cluster_list() {
 	clusters.GetClusterInfo(svc)
 	for _, element := range clusters.ClusterList {
 		fmt.Println(element.Name)
-		fmt.Println(element.Arn)
+//		fmt.Println(element.Arn)
+		for _,hostElement := range element.HostList {
+			fmt.Println("-----",hostElement.Arn)
+		}
 	}
 }
