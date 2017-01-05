@@ -5,7 +5,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/aws"
 	"fmt"
-//	"becs/host"
 	"becs/task"
 	"strings"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -16,7 +15,6 @@ type Cluster struct {
 	Arn string
 	Name string
 	TaskList []task.Task
-//	HostList []host.Host
 }
 
 type Clusters struct {
@@ -31,12 +29,10 @@ func (c *Clusters) describeClusters(svc *ecs.ECS, ec2_svc *ec2.EC2, clusterArn *
 		},
 	}
 	name, _ := svc.DescribeClusters(describe_params)
-	localTask:= new(task.Task)
+	localTask := new(task.Task)
 	taskList := localTask.GetTaskInfo(svc, ec2_svc, *name.Clusters[0].ClusterName, taskFilter)
 	if len(taskList) > 0 {
 		*ch <- taskList
-	} else {
-		*ch <- append(taskList, task.Task{"", "", *clusterArn, *name.Clusters[0].ClusterName, "", "", ""})
 	}
 }
 
@@ -54,8 +50,6 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS,ec2_svc *ec2.EC2,clusterFilter st
 					wg.Add(1)
 					go c.describeClusters(svc, ec2_svc, arn, taskFilter, &wg, &ch)
 				}
-
-				//c.ClusterList = append(c.ClusterList, Cluster{*arn, *name.Clusters[0].ClusterName, taskList}) //,hostList})
 			}
 			return pageNum > 0
 		})
@@ -70,11 +64,11 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS,ec2_svc *ec2.EC2,clusterFilter st
 	}()
 	index:=0
 	for m := range ch {
-		c.ClusterList = append(c.ClusterList, Cluster{m[index].ClusterArn, m[index].ClusterName, m}) //,hostList})
+		c.ClusterList = append(c.ClusterList, Cluster{m[index].ClusterArn, m[index].ClusterName, m})
 	}
 }
 
-func Cluster_list() {
+func Cluster_list(clusterFilter string,taskFilter string) {
 	clust := new(Clusters)
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
@@ -83,8 +77,6 @@ func Cluster_list() {
 	}
 	svc := ecs.New(sess)
 	ec2_svc := ec2.New(sess)
-	clusterFilter:=""
-	taskFilter:=""
 
 	clust.GetClusterInfo(svc,ec2_svc,clusterFilter,taskFilter)
 	for _, element := range clust.ClusterList {
