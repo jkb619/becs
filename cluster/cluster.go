@@ -41,7 +41,6 @@ func (c *Clusters) describeClusters(svc *ecs.ECS, ec2_svc *ec2.EC2, clusterArn *
 
 func (c *Clusters) GetClusterInfo(svc *ecs.ECS,ec2_svc *ec2.EC2,clusterFilter string, taskFilter string) {
 	list_params := &ecs.ListClustersInput{}
-
 	pageNum := 0
 	err := svc.ListClustersPages(list_params,
 		func(page *ecs.ListClustersOutput, lastPage bool) bool {

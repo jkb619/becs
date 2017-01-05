@@ -57,8 +57,29 @@ func getContainerInstanceIpAddress(svc *ecs.ECS,ec2_svc *ec2.EC2, clusterName st
 	return *ec2id
 }
 
-func (t *Task) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, clusterArn *string, taskFilter string) {
+func (t *Task) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, taskArn *string, clusterName string, taskFilter string) {
+	defer wg.Done()
+	tasklist_params := &ecs.DescribeTasksInput{
+		Tasks: []*string{
+			aws.String(*taskArn),
+		},
+		Cluster: aws.String(clusterName),
+	}
+	taskDesc_resp, err := svc.DescribeTasks(tasklist_params)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	taskName := *taskDesc_resp.Tasks[0].Containers[0].Name
+	if strings.Contains(taskName,taskFilter) {
+		clusterArn := *taskDesc_resp.Tasks[0].ClusterArn
+		containerInstanceArn := *taskDesc_resp.Tasks[0].ContainerInstanceArn
 
+		containerInstanceId := getContainerInstanceId(svc, clusterName, containerInstanceArn)
+		taskList:=[]Task{}
+		taskList = append(taskList, Task{taskName, *taskArn, clusterArn, clusterName, containerInstanceArn, containerInstanceId})
+		ch <- taskList
+	}
 }
 
 func (t *Task) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,taskFilter string) []Task {
@@ -66,11 +87,12 @@ func (t *Task) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,t
 		Cluster: aws.String(clusterName),
 	}
 	pageNum := 0
-	taskList := []Task{}
+	taskList:=[]Task{}
 	err := svc.ListTasksPages(list_params,
 		func(page *ecs.ListTasksOutput, lastPage bool) bool {
 			pageNum++
 			for _, taskArn := range page.TaskArns {
+/*
 				tasklist_params := &ecs.DescribeTasksInput{
 					Tasks: []*string{
 						aws.String(*taskArn),
@@ -90,6 +112,9 @@ func (t *Task) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,t
 					containerInstanceId := getContainerInstanceId(svc, clusterName, containerInstanceArn)
 					taskList = append(taskList, Task{taskName, *taskArn, clusterArn, clusterName, containerInstanceArn, containerInstanceId})
 				}
+*/
+				wg.Add(1)
+				go t.describeTasks(svc, ec2_svc, taskArn, clusterName, taskFilter)
 			}
 			return pageNum > 0
 		})
@@ -98,6 +123,13 @@ func (t *Task) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,t
 		fmt.Println(err.Error())
 		return nil
 	}
-
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+	index:=0
+	for m := range ch {
+		taskList = append(taskList, Task{m[index].Name, m[index].Arn, m[index].ClusterArn, m[index].ClusterName, m[index].ContainerInstanceArn, m[index].ContainerEc2Id}) //,hostList})
+	}
 	return taskList
 }
