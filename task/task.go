@@ -16,6 +16,7 @@ type Task struct {
 	ClusterName string
 	ContainerInstanceArn string
 	ContainerEc2Id string
+	ContainerEc2Ip string
 }
 
 func getContainerInstanceId(svc *ecs.ECS,clusterName string, containerInstanceArn string) string {
@@ -39,22 +40,22 @@ func getContainerInstanceId(svc *ecs.ECS,clusterName string, containerInstanceAr
 	return *ec2id
 }
 
-func getContainerInstanceIpAddress(svc *ecs.ECS,ec2_svc *ec2.EC2, clusterName string, containerInstanceArn string) string {
-	ec2list_params := &ecs.DescribeContainerInstancesInput{
-		ContainerInstances: []*string{
-			aws.String(containerInstanceArn),
+func getContainerInstanceIpAddress(ec2_svc *ec2.EC2, instanceId string) string {
+	var ec2ip string = ""
+	ec2list_params := &ec2.DescribeInstancesInput{
+		InstanceIds: []*string{
+			aws.String(instanceId),
 		},
-		Cluster: aws.String(clusterName),
 	}
-	ec2list_resp, err := svc.DescribeContainerInstances(ec2list_params)
-	ec2id := ec2list_resp.ContainerInstances[0].Ec2InstanceId
-
+	ec2list_resp, err := ec2_svc.DescribeInstances(ec2list_params)
 	if err != nil {
 		fmt.Println(err.Error())
 		return ""
 	}
-
-	return *ec2id
+	if len(ec2list_resp.Reservations) > 0 {
+		ec2ip = *ec2list_resp.Reservations[0].Instances[0].PrivateIpAddress
+	}
+	return ec2ip
 }
 
 func (t *Task) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, taskArn *string, clusterName string, taskFilter string, wg *sync.WaitGroup, ch *(chan []Task)) {
@@ -76,8 +77,9 @@ func (t *Task) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, taskArn *string, cl
 		containerInstanceArn := *taskDesc_resp.Tasks[0].ContainerInstanceArn
 
 		containerInstanceId := getContainerInstanceId(svc, clusterName, containerInstanceArn)
+		containerInstanceIp := getContainerInstanceIpAddress(ec2_svc,containerInstanceId)
 		taskList:=[]Task{}
-		taskList = append(taskList, Task{taskName, *taskArn, clusterArn, clusterName, containerInstanceArn, containerInstanceId})
+		taskList = append(taskList, Task{taskName, *taskArn, clusterArn, clusterName, containerInstanceArn, containerInstanceId, containerInstanceIp})
 		*ch <- taskList
 	}
 }
@@ -111,7 +113,7 @@ func (t *Task) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,t
 	}()
 	index:=0
 	for m := range ch {
-		taskList = append(taskList, Task{m[index].Name, m[index].Arn, m[index].ClusterArn, m[index].ClusterName, m[index].ContainerInstanceArn, m[index].ContainerEc2Id}) //,hostList})
+		taskList = append(taskList, Task{m[index].Name, m[index].Arn, m[index].ClusterArn, m[index].ClusterName, m[index].ContainerInstanceArn, m[index].ContainerEc2Id, m[index].ContainerEc2Ip}) //,hostList})
 	}
 	return taskList
 }

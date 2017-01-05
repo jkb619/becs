@@ -36,7 +36,7 @@ func (c *Clusters) describeClusters(svc *ecs.ECS, ec2_svc *ec2.EC2, clusterArn *
 	if len(taskList) > 0 {
 		*ch <- taskList
 	} else {
-		*ch <- append(taskList, task.Task{"", "", *clusterArn, *name.Clusters[0].ClusterName, "", ""})
+		*ch <- append(taskList, task.Task{"", "", *clusterArn, *name.Clusters[0].ClusterName, "", "", ""})
 	}
 }
 
@@ -93,7 +93,7 @@ func Cluster_list() {
 //			fmt.Println("-----",taskElement.Arn)//," : ",taskElement.Ec2Id)
 			fmt.Println("-----",taskElement.Name)
 //			fmt.Println("-----",taskElement.ClusterArn)
-			fmt.Println("----------",taskElement.ContainerInstanceArn," : ",taskElement.ContainerEc2Id)
+			fmt.Println("----------",taskElement.ContainerInstanceArn," : ",taskElement.ContainerEc2Id," : ",taskElement.ContainerEc2Ip)
 		}
 	}
 }
