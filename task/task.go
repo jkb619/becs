@@ -6,15 +6,20 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"strings"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"sync"
 )
 
 type Task struct {
 	Name string
 	Arn string
 	ClusterArn string
+	ClusterName string
 	ContainerInstanceArn string
 	ContainerEc2Id string
 }
+
+var ch=make(chan []Task)
+var wg sync.WaitGroup
 
 func getContainerInstanceId(svc *ecs.ECS,clusterName string, containerInstanceArn string) string {
 	ec2list_params := &ecs.DescribeContainerInstancesInput{
@@ -52,7 +57,11 @@ func getContainerInstanceIpAddress(svc *ecs.ECS,ec2_svc *ec2.EC2, clusterName st
 	return *ec2id
 }
 
-func GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,taskFilter string) []Task {
+func (t *Task) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, clusterArn *string, taskFilter string) {
+
+}
+
+func (t *Task) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,taskFilter string) []Task {
 	list_params := &ecs.ListTasksInput{
 		Cluster: aws.String(clusterName),
 	}
@@ -79,7 +88,7 @@ func GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,taskFilter 
 					containerInstanceArn := *taskDesc_resp.Tasks[0].ContainerInstanceArn
 
 					containerInstanceId := getContainerInstanceId(svc, clusterName, containerInstanceArn)
-					taskList = append(taskList, Task{taskName, *taskArn, clusterArn, containerInstanceArn, containerInstanceId})
+					taskList = append(taskList, Task{taskName, *taskArn, clusterArn, clusterName, containerInstanceArn, containerInstanceId})
 				}
 			}
 			return pageNum > 0
