@@ -5,15 +5,35 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/aws"
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
 type Host struct {
 	Arn string
 	Ec2Id string
+	Ec2Ip string
 	ServiceList []container.Service
 }
 
-func GetHostInfo(svc *ecs.ECS,clusterName string) []Host {
+func getContainerInstanceIpAddress(ec2_svc *ec2.EC2, instanceId string) string {
+	var ec2ip string = ""
+	ec2list_params := &ec2.DescribeInstancesInput{
+		InstanceIds: []*string{
+			aws.String(instanceId),
+		},
+	}
+	ec2list_resp, err := ec2_svc.DescribeInstances(ec2list_params)
+	if err != nil {
+		fmt.Println(err.Error())
+		return ""
+	}
+	if len(ec2list_resp.Reservations) > 0 {
+		ec2ip = *ec2list_resp.Reservations[0].Instances[0].PrivateIpAddress
+	}
+	return ec2ip
+}
+
+func GetHostInfo(svc *ecs.ECS,ec2_svc *ec2.EC2, clusterName string) []Host {
 	list_params := &ecs.ListContainerInstancesInput{
 		Cluster: aws.String(clusterName),
 	}
@@ -31,13 +51,14 @@ func GetHostInfo(svc *ecs.ECS,clusterName string) []Host {
 				}
 				ec2list_resp, err := svc.DescribeContainerInstances(ec2list_params)
 				ec2id := ec2list_resp.ContainerInstances[0].Ec2InstanceId
+				ec2ip := getContainerInstanceIpAddress(ec2_svc,*ec2id)
 
 				if err != nil {
 					fmt.Println(err.Error())
 					return false
 				}
 
-				hostList=append(hostList,Host{*arn,*ec2id,[]container.Service{}})
+				hostList=append(hostList,Host{*arn,*ec2id,ec2ip,[]container.Service{}})
 			}
 			return pageNum > 0
 		})

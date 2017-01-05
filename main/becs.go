@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"becs/cluster"
+	"strings"
 )
 
 
 func main() {
 	listCommand := flag.NewFlagSet("list",flag.ExitOnError)
+	levelFlag := listCommand.String("level","task","what level to delve: cluster/task (defaults to task)")
 	clusterFilterFlag := listCommand.String("cluster","","cluster substring to match")
 	taskFilterFlag := listCommand.String("task","","task substring to match")
 
@@ -28,6 +30,10 @@ func main() {
 	switch os.Args[1] {
 	case "list":
 		listCommand.Parse(os.Args[2:])
+		if !strings.Contains(*levelFlag,"cluster") &&
+			!strings.Contains(*levelFlag,"task") {
+			fmt.Println("-level must be either 'cluster' or 'task'")
+		}
 //	case "ssh":
 //		sshCommand.Parse(os.Args[2:])
 	default:
@@ -37,7 +43,7 @@ func main() {
 
 	if listCommand.Parsed() {
 		//fmt.Println("list + ",*clusterFilterFlag," + ",*taskFilterFlag)
-		cluster.Cluster_list(*clusterFilterFlag,*taskFilterFlag)
+		cluster.Cluster_list(*clusterFilterFlag,*taskFilterFlag,*levelFlag)
 	}
 //	if sshCommand.Parsed() {
 //	}
