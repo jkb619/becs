@@ -26,6 +26,7 @@ func main() {
 		fmt.Println("usage: becs <command> [<args>]")
 		fmt.Println("where <command> is :")
 		fmt.Println("list,ssh,scp")
+		os.Exit(2)
 	}
 	switch os.Args[1] {
 	case "list":
@@ -33,6 +34,7 @@ func main() {
 		if !strings.Contains(*levelFlag,"cluster") &&
 			!strings.Contains(*levelFlag,"task") {
 			fmt.Println("-level must be either 'cluster' or 'task'")
+			os.Exit(2)
 		}
 //	case "ssh":
 //		sshCommand.Parse(os.Args[2:])

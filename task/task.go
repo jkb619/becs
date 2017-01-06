@@ -1,24 +1,22 @@
 package task
 
 import (
-	"fmt"
-	"github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/aws/aws-sdk-go/aws"
-	"strings"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"sync"
 )
 
 type Task struct {
 	Name string
 	Arn string
-	ClusterArn string
-	ClusterName string
-	ContainerInstanceArn string
-	ContainerEc2Id string
-	ContainerEc2Ip string
+	//ClusterArn string
+	//ClusterName string
+	//ContainerInstanceArn string
+	//ContainerEc2Id string
+	//ContainerEc2Ip string
 }
 
+type Tasks struct {
+	TaskList []Task
+}
+/*
 func getContainerInstanceId(svc *ecs.ECS,clusterName string, containerInstanceArn string) string {
 	var ec2id *string
 	ec2list_params := &ecs.DescribeContainerInstancesInput{
@@ -58,7 +56,7 @@ func getContainerInstanceIpAddress(ec2_svc *ec2.EC2, instanceId string) string {
 	return ec2ip
 }
 
-func (t *Task) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, taskArn *string, clusterName string, taskFilter string, wg *sync.WaitGroup, ch *(chan []Task)) {
+func (t *Tasks) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, taskArn *string, clusterName string, taskFilter string, wg *sync.WaitGroup, ch *(chan Tasks)) {
 	defer (*wg).Done()
 	tasklist_params := &ecs.DescribeTasksInput{
 		Tasks: []*string{
@@ -73,13 +71,14 @@ func (t *Task) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, taskArn *string, cl
 	}
 	taskName := *taskDesc_resp.Tasks[0].Containers[0].Name
 	if strings.Contains(taskName,taskFilter) {
-		clusterArn := *taskDesc_resp.Tasks[0].ClusterArn
-		containerInstanceArn := *taskDesc_resp.Tasks[0].ContainerInstanceArn
+//		clusterArn := *taskDesc_resp.Tasks[0].ClusterArn
+//		containerInstanceArn := *taskDesc_resp.Tasks[0].ContainerInstanceArn
 
-		containerInstanceId := getContainerInstanceId(svc, clusterName, containerInstanceArn)
-		containerInstanceIp := getContainerInstanceIpAddress(ec2_svc,containerInstanceId)
-		taskList:=[]Task{}
-		taskList = append(taskList, Task{taskName, *taskArn, clusterArn, clusterName, containerInstanceArn, containerInstanceId, containerInstanceIp})
+//		containerInstanceId := getContainerInstanceId(svc, clusterName, containerInstanceArn)
+//		containerInstanceIp := getContainerInstanceIpAddress(ec2_svc,containerInstanceId)
+		taskList:=Tasks{}
+//		taskList = append(taskList, Task{taskName, *taskArn, clusterArn, clusterName, containerInstanceArn, containerInstanceId, containerInstanceIp})
+		taskList = append(taskList,Task{taskName, *taskArn})
 		*ch <- taskList
 	}
 }
@@ -111,9 +110,11 @@ func (t *Task) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,t
 		wg.Wait()
 		close(ch)
 	}()
-	index:=0
+//	index:=0
 	for m := range ch {
-		taskList = append(taskList, Task{m[index].Name, m[index].Arn, m[index].ClusterArn, m[index].ClusterName, m[index].ContainerInstanceArn, m[index].ContainerEc2Id, m[index].ContainerEc2Ip}) //,hostList})
+//		taskList = append(taskList, Task{m[index].Name, m[index].Arn, m[index].ClusterArn, m[index].ClusterName, m[index].ContainerInstanceArn, m[index].ContainerEc2Id, m[index].ContainerEc2Ip}) //,hostList})
+		taskList = append(taskList,m[0])
 	}
 	return taskList
 }
+*/
