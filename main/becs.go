@@ -54,7 +54,6 @@ func main() {
 	}
 
 	if listCommand.Parsed() {
-		//fmt.Println("list + ",*clusterFilterFlag," + ",*taskFilterFlag)
 		clusters := new(cluster.Clusters)
 		clusters.List(*clusterFilterFlag,*hostFilterFlag,*taskFilterFlag,level)
 	}

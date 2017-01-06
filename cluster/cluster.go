@@ -34,7 +34,6 @@ func (s QueryLevel) String() string {
 type Cluster struct {
 	Arn string
 	Name string
-//	TaskList []task.Task
 	Hosts host.Hosts
 }
 
@@ -105,15 +104,32 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 		}
 	}
 
+	displayArray:=[]string{}
 	for _, cluster := range c.ClusterList {
-		fmt.Println(cluster.Name," : ",cluster.Arn)
-		if (level > LevelCluster) {
-			for _, host := range cluster.Hosts.HostList {
-				fmt.Println("-----", host.Ec2Id, " : ", host.Ec2Ip)
-				if (level > LevelHost) {
-					for _, taskElement := range host.Tasks.TaskList {
-						fmt.Println("----------", taskElement.Name, " : ", taskElement.Arn)
+		switch level {
+		case LevelCluster:
+			displayArray=append(displayArray,cluster.Name+" : "+cluster.Arn)
+		case LevelHost:
+			if len(cluster.Hosts.HostList) > 0 {
+				displayArray=append(displayArray,cluster.Name+" : "+cluster.Arn)
+				for _, hostLoop := range cluster.Hosts.HostList {
+					displayArray=append(displayArray,"-----"+hostLoop.Ec2Id+" : "+hostLoop.Ec2Ip)
+				}
+			}
+		case LevelTask:
+			printClusterHeader:=true
+			printHostHeader:=true
+			for _, hostLoop := range cluster.Hosts.HostList {
+				for _, taskElement := range hostLoop.Tasks.TaskList {
+					if printClusterHeader {
+						fmt.Println(cluster.Name," : ",cluster.Arn)
+						printClusterHeader=false
 					}
+					if printHostHeader {
+						fmt.Println("-----", hostLoop.Ec2Id, " : ", hostLoop.Ec2Ip)
+						printHostHeader=false
+					}
+					fmt.Println("----------",taskElement.Name," : ",taskElement.Arn)
 				}
 			}
 		}
