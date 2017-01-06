@@ -13,7 +13,7 @@ type Host struct {
 	Arn string
 	Ec2Id string
 	Ec2Ip string
-	TaskList []task.Task
+	Tasks task.Tasks
 }
 
 type Hosts struct {
@@ -54,7 +54,7 @@ func (h *Hosts) getHostsGoroutine(svc *ecs.ECS, ec2_svc *ec2.EC2, instanceArn st
 		fmt.Println(err.Error())
 		return
 	}
-	h.HostList=append(h.HostList,Host{instanceArn,*ec2id,ec2ip,[]task.Task{}})
+	h.HostList=append(h.HostList,Host{instanceArn,*ec2id,ec2ip,task.Tasks{}})
 	*ch<- h.HostList
 }
 

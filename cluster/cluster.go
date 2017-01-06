@@ -9,7 +9,27 @@ import (
 	"becs/host"
 	"sync"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"strconv"
 )
+
+type QueryLevel uint8
+
+const (
+	LevelCluster=QueryLevel(iota)
+	LevelHost
+	LevelTask
+)
+
+func (s QueryLevel) String() string {
+	var name = []string{"cluster","host","task"}
+	var i = uint8(s)
+	switch {
+	case i <= uint8(LevelTask):
+		return name[i]
+	default:
+		return strconv.Itoa(int(i))
+	}
+}
 
 type Cluster struct {
 	Arn string
@@ -94,7 +114,7 @@ func (c *Clusters) getClusterInfo(svc *ecs.ECS,clusterFilter string) {
 	}
 }
 
-func Cluster_list(clusterFilter string,taskFilter string, level string) {
+func Cluster_list(clusterFilter string, hostFilter string, taskFilter string, level QueryLevel) {
 	clusters := new(Clusters)
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
@@ -105,14 +125,30 @@ func Cluster_list(clusterFilter string,taskFilter string, level string) {
 	ec2_svc := ec2.New(sess)
 
 	clusters.getClusterInfo(svc,clusterFilter)
-	for i:=0;i<len(clusters.ClusterList);i++ {
-		clusters.ClusterList[i].Hosts.GetHostInfo(svc,ec2_svc,clusters.ClusterList[i].Name)
+	if level > LevelCluster {
+		for i := 0; i < len(clusters.ClusterList); i++ {
+			clusters.ClusterList[i].Hosts.GetHostInfo(svc, ec2_svc, clusters.ClusterList[i].Name)
+			if level > LevelHost {
+				for j :=0;j<len(clusters.ClusterList[i].Hosts.HostList);j++ {
+					clusters.ClusterList[i].Hosts.HostList[j].Tasks.GetTaskInfo(svc,ec2_svc,clusters.ClusterList[i].Name, clusters.ClusterList[i].Hosts.HostList[j].Arn, taskFilter)
+				}
+			}
+		}
 	}
 
 	for _, cluster := range clusters.ClusterList {
 		fmt.Println(cluster.Name," : ",cluster.Arn)
-		for _,host := range cluster.Hosts.HostList {
-			fmt.Println("-----",host.Ec2Id," : ",host.Ec2Ip)
+		if (level > LevelCluster) {
+			for _, host := range cluster.Hosts.HostList {
+				fmt.Println("-----", host.Ec2Id, " : ", host.Ec2Ip)
+				if (level > LevelHost) {
+					for _, taskElement := range host.Tasks.TaskList {
+						fmt.Println("----------", taskElement.Name, " : ", taskElement.Arn)
+						//	fmt.Println("-----",taskElement.ClusterArn)
+						//	fmt.Println("----------", taskElement.ContainerInstanceArn, " : ", taskElement.ContainerEc2Id, " : ", taskElement.ContainerEc2Ip)
+					}
+				}
+			}
 		}
 //		if (level == "task") {
 //			for _, taskElement := range element.TaskList {

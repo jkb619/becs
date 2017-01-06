@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-
 func main() {
 	listCommand := flag.NewFlagSet("list",flag.ExitOnError)
 	levelFlag := listCommand.String("level","task","what level to delve: cluster/task (defaults to task)")
 	clusterFilterFlag := listCommand.String("cluster","","cluster substring to match")
+	hostFilterFlag := listCommand.String("host","","host substring to match")
 	taskFilterFlag := listCommand.String("task","","task substring to match")
 
 //	sshCommand := flag.NewFlagSet("list",flag.ExitOnError)
@@ -28,13 +28,23 @@ func main() {
 		fmt.Println("list,ssh,scp")
 		os.Exit(2)
 	}
+	level:=cluster.LevelCluster
 	switch os.Args[1] {
 	case "list":
 		listCommand.Parse(os.Args[2:])
 		if !strings.Contains(*levelFlag,"cluster") &&
 			!strings.Contains(*levelFlag,"task") {
-			fmt.Println("-level must be either 'cluster' or 'task'")
+			fmt.Println("-level must be either 'cluster','host', or 'task'")
 			os.Exit(2)
+		} else {
+			switch *levelFlag {
+			case "cluster":
+				level=cluster.LevelCluster
+			case "host":
+				level=cluster.LevelHost
+			case "task":
+				level=cluster.LevelTask
+			}
 		}
 //	case "ssh":
 //		sshCommand.Parse(os.Args[2:])
@@ -45,7 +55,7 @@ func main() {
 
 	if listCommand.Parsed() {
 		//fmt.Println("list + ",*clusterFilterFlag," + ",*taskFilterFlag)
-		cluster.Cluster_list(*clusterFilterFlag,*taskFilterFlag,*levelFlag)
+		cluster.Cluster_list(*clusterFilterFlag,*hostFilterFlag,*taskFilterFlag,level)
 	}
 //	if sshCommand.Parsed() {
 //	}
