@@ -41,37 +41,7 @@ type Cluster struct {
 type Clusters struct {
 	ClusterList []Cluster
 }
-/*
-func (c *Clusters) getClusterHosts(ec2_svc *ec2.EC2, clusterArn string, wg *sync.WaitGroup, ch *chan (host.Hosts)) {
-	defer wg.Done()
-	describe_params := &ecs.DescribeClustersInput{
-		Clusters: []*string{
-			aws.String(*clusterArn),
-		},
-	}
-	name, _ := svc.DescribeClusters(describe_params)
-	localTask := new(task.Task)
-	taskList := localTask.GetTaskInfo(svc, ec2_svc, *name.Clusters[0].ClusterName, taskFilter)
-	if len(taskList) > 0 {
-		*ch <- taskList
-	}
-}
 
-func (c *Clusters) getClusterTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, clusterArn *string, taskFilter string, wg *sync.WaitGroup, ch *chan (task.Tasks)) {
-	defer wg.Done()
-	describe_params := &ecs.DescribeClustersInput{
-		Clusters: []*string{
-			aws.String(*clusterArn),
-		},
-	}
-	name, _ := svc.DescribeClusters(describe_params)
-	localTask := new(task.Task)
-	taskList := localTask.GetTaskInfo(svc, ec2_svc, *name.Clusters[0].ClusterName, taskFilter)
-	if len(taskList) > 0 {
-		*ch <- taskList
-	}
-}
-*/
 func (c *Clusters) getClusterGoroutine(svc *ecs.ECS,clusterArn string, wg *sync.WaitGroup, ch *(chan []Cluster)) {
 	defer (*wg).Done()
 	describe_params := &ecs.DescribeClustersInput{
@@ -130,6 +100,7 @@ func Cluster_list(clusterFilter string, hostFilter string, taskFilter string, le
 			clusters.ClusterList[i].Hosts.GetHostInfo(svc, ec2_svc, clusters.ClusterList[i].Name)
 			if level > LevelHost {
 				for j :=0;j<len(clusters.ClusterList[i].Hosts.HostList);j++ {
+					//if (clusters.ClusterList[i].Hosts.HostList[j].)
 					clusters.ClusterList[i].Hosts.HostList[j].Tasks.GetTaskInfo(svc,ec2_svc,clusters.ClusterList[i].Name, clusters.ClusterList[i].Hosts.HostList[j].Arn, taskFilter)
 				}
 			}
@@ -140,22 +111,13 @@ func Cluster_list(clusterFilter string, hostFilter string, taskFilter string, le
 		fmt.Println(cluster.Name," : ",cluster.Arn)
 		if (level > LevelCluster) {
 			for _, host := range cluster.Hosts.HostList {
-				fmt.Println("-----", host.Ec2Id, " : ", host.Ec2Ip)
+				fmt.Println("-----"," : ", host.Ec2Id, " : ", host.Ec2Ip)
 				if (level > LevelHost) {
 					for _, taskElement := range host.Tasks.TaskList {
 						fmt.Println("----------", taskElement.Name, " : ", taskElement.Arn)
-						//	fmt.Println("-----",taskElement.ClusterArn)
-						//	fmt.Println("----------", taskElement.ContainerInstanceArn, " : ", taskElement.ContainerEc2Id, " : ", taskElement.ContainerEc2Ip)
 					}
 				}
 			}
 		}
-//		if (level == "task") {
-//			for _, taskElement := range element.TaskList {
-//				fmt.Println("-----", taskElement.Name, " : ",taskElement.Arn)
-//				fmt.Println("-----",taskElement.ClusterArn)
-//				fmt.Println("----------", taskElement.ContainerInstanceArn, " : ", taskElement.ContainerEc2Id, " : ", taskElement.ContainerEc2Ip)
-//			}
-//		}
 	}
 }

@@ -47,13 +47,13 @@ func (h *Hosts) getHostsGoroutine(svc *ecs.ECS, ec2_svc *ec2.EC2, instanceArn st
 		Cluster: aws.String(clusterName),
 	}
 	ec2list_resp, err := svc.DescribeContainerInstances(ec2list_params)
-	ec2id := ec2list_resp.ContainerInstances[0].Ec2InstanceId
-	ec2ip := getContainerInstanceIpAddress(ec2_svc,*ec2id)
-
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
+	ec2id := ec2list_resp.ContainerInstances[0].Ec2InstanceId
+	ec2ip := getContainerInstanceIpAddress(ec2_svc,*ec2id)
+
 	h.HostList=append(h.HostList,Host{instanceArn,*ec2id,ec2ip,task.Tasks{}})
 	*ch<- h.HostList
 }
