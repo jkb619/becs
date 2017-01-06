@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
+func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
@@ -28,6 +28,18 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilte
 			c.ClusterList[i].Hosts.HostList[j].Tasks.GetTaskInfo(svc,ec2_svc,c.ClusterList[i].Name, c.ClusterList[i].Hosts.HostList[j].Arn, *taskFilter)
 		}
 	}
+
+	// check what the client is using for a gui to determine if we should limit to a single ssh call
+	com1:=exec.Command("ps","-A")
+	com2:=exec.Command("egrep","-i","\"gnome|kde|mate|cinnamon|lxde|xfce|jwm\"")
+	com2.Stdin,_=com1.StdoutPipe()
+	//com1.StdoutPipe()=com1.Stdout
+	_=com2.Start()
+	_=com1.Run()
+	_=com2.Wait()
+	//com2.Stdout=os.Stdout
+	fmt.Println(com1.Output())
+
 	for _, cluster := range c.ClusterList {
 		for _, hostLoop := range cluster.Hosts.HostList {
 			for _, taskElement := range hostLoop.Tasks.TaskList {
@@ -40,30 +52,29 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilte
 				}
 				dockerId:=strings.TrimSpace(string(sshOut))
 
-				if (*sshMode=="multi") {
+				if (*sshInteractive) {
 					var sshSession *exec.Cmd
+					terminal:="none"
 					dockerCmd:="docker exec -it "+dockerId+" /bin/bash"
 					cmdOut,_:=exec.Command("which","x-terminal-emulator").Output()
 					if len(cmdOut)!=0 {
 						//fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name)
-						sshSession = exec.Command( "x-terminal-emulator","-e","ssh","-tt",*user+"@"+hostLoop.Ec2Ip,dockerCmd)
+						terminal="x-terminal-emulator"
 					} else {
-						cmdOut, err = exec.Command("which", "xterm").Output()
+						cmdOut, err = exec.Command("which", "konsole").Output()
 						if len(cmdOut) != 0 {
-							//terminal = "xterm"
+							terminal="konsole"
+						} else {
+							cmdOut, err = exec.Command("which", "xterm").Output()
+							if len(cmdOut) != 0 {
+								terminal="xterm"
+							}
 						}
-					}// else {
-					//		cmdOut, err = exec.Command("which", "konsole").Output()
-					//		if len(cmdOut) != 0 {
-					//		//terminal = "konsole"
-					//		}
-					//	}
-					//}
+					}
+					if (terminal!="none") {
+						sshSession = exec.Command(terminal, "-e", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
+					}
 
-					//if err != nil {
-					//	fmt.Printf("sshSession %v\n", err)
-					//	os.Exit(2)
-					//}
 					sshSession.Stdout = os.Stdout
 					sshSession.Stderr = os.Stderr
 					sshSession.Stdin = os.Stdin
