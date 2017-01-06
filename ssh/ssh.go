@@ -40,27 +40,25 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilte
 				}
 				dockerId:=strings.TrimSpace(string(sshOut))
 
-				fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name)
-				dockerCmd:="docker exec -it "+dockerId+" /bin/bash"
 				if (*sshMode=="multi") {
-					// check if terminals exist
-					terminal:=""
+					var sshSession *exec.Cmd
+					dockerCmd:="docker exec -it "+dockerId+" /bin/bash"
 					cmdOut,err:=exec.Command("which","x-terminal-emulator").Output()
 					if len(cmdOut)!=0 {
-						terminal = "x-terminal-emulator"
-					} else {
-						cmdOut,err=exec.Command("which","xterm").Output()
-						if len(cmdOut)!=0 {
-							terminal = "xterm"
-						} else {
-							cmdOut, err = exec.Command("which", "konsole").Output()
-							if len(cmdOut) != 0 {
-							terminal = "konsole"
-							}
-						}
-					}
-					fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name," using ",terminal)
-					sshSession := exec.Command(terminal, "-e","ssh","-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
+						fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name)
+						sshSession = exec.Command( "ssh","-tt ",*user+"@"+hostLoop.Ec2Ip,dockerCmd)
+					}// else {
+					//	cmdOut,err=exec.Command("which","xterm").Output()
+					//	if len(cmdOut)!=0 {
+					//		//terminal = "xterm"
+					//	} else {
+					//		cmdOut, err = exec.Command("which", "konsole").Output()
+					//		if len(cmdOut) != 0 {
+					//		//terminal = "konsole"
+					//		}
+					//	}
+					//}
+
 					if sshSession != nil {
 						fmt.Printf("%v\n", err)
 						os.Exit(2)

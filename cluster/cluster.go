@@ -103,22 +103,33 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 			}
 		}
 	}
-
+	printClusterHeader:=true
 	for _, cluster := range c.ClusterList {
 		switch level {
 		case LevelCluster:
 			fmt.Println(cluster.Name," : ",cluster.Arn)
 		case LevelHost:
+			if !printClusterHeader {
+				printClusterHeader = true
+			}
 			if len(cluster.Hosts.HostList) > 0 {
-				fmt.Println(cluster.Name," : ",cluster.Arn)
+				if printClusterHeader {
+					fmt.Println(cluster.Name, " : ", cluster.Arn)
+					printClusterHeader=false
+				}
 				for _, hostLoop := range cluster.Hosts.HostList {
 					fmt.Println("-----",hostLoop.Ec2Id," : ",hostLoop.Ec2Ip)
 				}
 			}
 		case LevelTask:
-			printClusterHeader:=true
+			if !printClusterHeader {
+				printClusterHeader = true
+			}
 			printHostHeader:=true
 			for _, hostLoop := range cluster.Hosts.HostList {
+				if !printHostHeader {
+					printHostHeader=true
+				}
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					if printClusterHeader {
 						fmt.Println(cluster.Name," : ",cluster.Arn)

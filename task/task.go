@@ -32,7 +32,7 @@ func (t *Tasks) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, taskArn *string, c
 		return
 	}
 	taskName := *taskDesc_resp.Tasks[0].Containers[0].Name
-	if strings.Contains(taskName,taskFilter) {
+	if strings.Contains(taskName,taskFilter) || strings.Contains(*taskArn,taskFilter){
 		taskList:=[]Task{}
 		taskList = append(taskList,Task{taskName, *taskArn})
 		*ch <- taskList
