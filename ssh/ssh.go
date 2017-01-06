@@ -43,15 +43,16 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilte
 				if (*sshMode=="multi") {
 					var sshSession *exec.Cmd
 					dockerCmd:="docker exec -it "+dockerId+" /bin/bash"
-					cmdOut,err:=exec.Command("which","x-terminal-emulator").Output()
+					cmdOut,_:=exec.Command("which","x-terminal-emulator").Output()
 					if len(cmdOut)!=0 {
-						fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name)
-						sshSession = exec.Command( "ssh","-tt ",*user+"@"+hostLoop.Ec2Ip,dockerCmd)
+						//fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name)
+						sshSession = exec.Command( "x-terminal-emulator","-e","ssh","-tt",*user+"@"+hostLoop.Ec2Ip,dockerCmd)
+					} else {
+						cmdOut, err = exec.Command("which", "xterm").Output()
+						if len(cmdOut) != 0 {
+							//terminal = "xterm"
+						}
 					}// else {
-					//	cmdOut,err=exec.Command("which","xterm").Output()
-					//	if len(cmdOut)!=0 {
-					//		//terminal = "xterm"
-					//	} else {
 					//		cmdOut, err = exec.Command("which", "konsole").Output()
 					//		if len(cmdOut) != 0 {
 					//		//terminal = "konsole"
@@ -59,16 +60,16 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilte
 					//	}
 					//}
 
-					if sshSession != nil {
-						fmt.Printf("%v\n", err)
-						os.Exit(2)
-					}
+					//if err != nil {
+					//	fmt.Printf("sshSession %v\n", err)
+					//	os.Exit(2)
+					//}
 					sshSession.Stdout = os.Stdout
 					sshSession.Stderr = os.Stderr
-					//errSession:=sshSession.Start()
+					sshSession.Stdin = os.Stdin
 					errSession := sshSession.Run()
 					if errSession != nil {
-						fmt.Printf("%v\n", errSession)
+						fmt.Printf("errSession %v\n", errSession)
 						os.Exit(2)
 					}
 				}
