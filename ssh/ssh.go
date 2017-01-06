@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"os/exec"
+	"os"
+	"strings"
 )
 
 func EcsSSH(c *cluster.Clusters,clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
@@ -29,6 +32,29 @@ func EcsSSH(c *cluster.Clusters,clusterFilter *string,hostFilter *string,taskFil
 		for _, hostLoop := range cluster.Hosts.HostList {
 			for _, taskElement := range hostLoop.Tasks.TaskList {
 				fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " and getting dockerIdName for", taskElement.Name)
+				cmd:="docker ps |grep "+taskElement.Name+" | cut -d' ' -f1"
+				sshOut,err:=exec.Command("ssh",*user+"@"+hostLoop.Ec2Ip,cmd).Output()
+				if err!=nil {
+					fmt.Printf("%v\n",err)
+					os.Exit(2)
+				}
+				dockerId:=strings.TrimSpace(string(sshOut))
+
+				fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name)
+				dockerCmd:="docker exec -it "+dockerId+" /bin/bash"
+				sshSession:=exec.Command("ssh","-tt",*user+"@"+hostLoop.Ec2Ip,dockerCmd)
+				if err!=nil{
+					fmt.Printf("%v\n",err)
+					os.Exit(2)
+				}
+				sshSession.Stdout=os.Stdout
+				sshSession.Stderr=os.Stderr
+				//errSession:=sshSession.Start()
+				errSession:=sshSession.Run()
+				if errSession!=nil {
+					fmt.Printf("%v\n",errSession)
+					os.Exit(2)
+				}
 			}
 		}
 
