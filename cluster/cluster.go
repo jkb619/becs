@@ -84,8 +84,7 @@ func (c *Clusters) getClusterInfo(svc *ecs.ECS,clusterFilter string) {
 	}
 }
 
-func Cluster_list(clusterFilter string, hostFilter string, taskFilter string, level QueryLevel) {
-	clusters := new(Clusters)
+func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter string, level QueryLevel) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
@@ -94,24 +93,23 @@ func Cluster_list(clusterFilter string, hostFilter string, taskFilter string, le
 	svc := ecs.New(sess)
 	ec2_svc := ec2.New(sess)
 
-	clusters.getClusterInfo(svc,clusterFilter)
+	c.getClusterInfo(svc,clusterFilter)
 	if level > LevelCluster {
-		for i := 0; i < len(clusters.ClusterList); i++ {
-			clusters.ClusterList[i].Hosts.GetHostInfo(svc, ec2_svc, clusters.ClusterList[i].Name)
+		for i := 0; i < len(c.ClusterList); i++ {
+			c.ClusterList[i].Hosts.GetHostInfo(svc, ec2_svc, c.ClusterList[i].Name, hostFilter)
 			if level > LevelHost {
-				for j :=0;j<len(clusters.ClusterList[i].Hosts.HostList);j++ {
-					//if (clusters.ClusterList[i].Hosts.HostList[j].)
-					clusters.ClusterList[i].Hosts.HostList[j].Tasks.GetTaskInfo(svc,ec2_svc,clusters.ClusterList[i].Name, clusters.ClusterList[i].Hosts.HostList[j].Arn, taskFilter)
+				for j :=0;j<len(c.ClusterList[i].Hosts.HostList);j++ {
+					c.ClusterList[i].Hosts.HostList[j].Tasks.GetTaskInfo(svc,ec2_svc,c.ClusterList[i].Name, c.ClusterList[i].Hosts.HostList[j].Arn, taskFilter)
 				}
 			}
 		}
 	}
 
-	for _, cluster := range clusters.ClusterList {
+	for _, cluster := range c.ClusterList {
 		fmt.Println(cluster.Name," : ",cluster.Arn)
 		if (level > LevelCluster) {
 			for _, host := range cluster.Hosts.HostList {
-				fmt.Println("-----"," : ", host.Ec2Id, " : ", host.Ec2Ip)
+				fmt.Println("-----", host.Ec2Id, " : ", host.Ec2Ip)
 				if (level > LevelHost) {
 					for _, taskElement := range host.Tasks.TaskList {
 						fmt.Println("----------", taskElement.Name, " : ", taskElement.Arn)

@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"sync"
 	"becs/task"
+	"strings"
 )
 
 type Host struct {
@@ -38,7 +39,7 @@ func getContainerInstanceIpAddress(ec2_svc *ec2.EC2, instanceId string) string {
 	return ec2ip
 }
 
-func (h *Hosts) getHostsGoroutine(svc *ecs.ECS, ec2_svc *ec2.EC2, instanceArn string, clusterName string, wg *sync.WaitGroup, ch *(chan []Host)) {
+func (h *Hosts) getHostsGoroutine(svc *ecs.ECS, ec2_svc *ec2.EC2, instanceArn string, clusterName string, hostFilter string, wg *sync.WaitGroup, ch *(chan []Host)) {
 	defer wg.Done()
 	ec2list_params := &ecs.DescribeContainerInstancesInput{
 		ContainerInstances: []*string{
@@ -53,12 +54,14 @@ func (h *Hosts) getHostsGoroutine(svc *ecs.ECS, ec2_svc *ec2.EC2, instanceArn st
 	}
 	ec2id := ec2list_resp.ContainerInstances[0].Ec2InstanceId
 	ec2ip := getContainerInstanceIpAddress(ec2_svc,*ec2id)
-
-	h.HostList=append(h.HostList,Host{instanceArn,*ec2id,ec2ip,task.Tasks{}})
-	*ch<- h.HostList
+	hostList:=[]Host{}
+	if (strings.Contains(instanceArn,hostFilter)) || (strings.Contains(*ec2id,hostFilter)) || (strings.Contains(ec2ip,hostFilter)) {
+		hostList = append(hostList, Host{instanceArn, *ec2id, ec2ip, task.Tasks{}})
+		*ch <- hostList
+	}
 }
 
-func (h *Hosts) GetHostInfo(svc *ecs.ECS,ec2_svc *ec2.EC2, clusterName string)  {
+func (h *Hosts) GetHostInfo(svc *ecs.ECS,ec2_svc *ec2.EC2, clusterName string, hostFilter string)  {
 	var host_ch = make(chan []Host)
 	var host_wg sync.WaitGroup
 	pageNum := 0
@@ -71,7 +74,7 @@ func (h *Hosts) GetHostInfo(svc *ecs.ECS,ec2_svc *ec2.EC2, clusterName string)  
 			pageNum++
 			for _, instanceArn := range page.ContainerInstanceArns {
 				host_wg.Add(1)
-				go h.getHostsGoroutine(svc, ec2_svc,*instanceArn,clusterName,&host_wg,&host_ch)
+				go h.getHostsGoroutine(svc, ec2_svc, *instanceArn, clusterName, hostFilter, &host_wg, &host_ch)
 			}
 			return pageNum > 0
 		})

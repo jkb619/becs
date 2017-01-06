@@ -55,7 +55,8 @@ func main() {
 
 	if listCommand.Parsed() {
 		//fmt.Println("list + ",*clusterFilterFlag," + ",*taskFilterFlag)
-		cluster.Cluster_list(*clusterFilterFlag,*hostFilterFlag,*taskFilterFlag,level)
+		clusters := new(cluster.Clusters)
+		clusters.List(*clusterFilterFlag,*hostFilterFlag,*taskFilterFlag,level)
 	}
 //	if sshCommand.Parsed() {
 //	}
