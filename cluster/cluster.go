@@ -53,7 +53,7 @@ func (c *Clusters) getClusterGoroutine(svc *ecs.ECS,clusterArn string, wg *sync.
 	clusterList=append(clusterList,Cluster{clusterArn,*clusterDescription.Clusters[0].ClusterName,host.Hosts{}})
 	*ch<-clusterList
 }
-func (c *Clusters) getClusterInfo(svc *ecs.ECS,clusterFilter string) {
+func (c *Clusters) GetClusterInfo(svc *ecs.ECS,clusterFilter string) {
 	var cluster_ch = make(chan []Cluster)
 	var cluster_wg sync.WaitGroup
 	pageNum := 0
@@ -92,7 +92,7 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 	svc := ecs.New(sess)
 	ec2_svc := ec2.New(sess)
 
-	c.getClusterInfo(svc,clusterFilter)
+	c.GetClusterInfo(svc,clusterFilter)
 	if level > LevelCluster {
 		for i := 0; i < len(c.ClusterList); i++ {
 			c.ClusterList[i].Hosts.GetHostInfo(svc, ec2_svc, c.ClusterList[i].Name, hostFilter)
@@ -104,16 +104,15 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 		}
 	}
 
-	displayArray:=[]string{}
 	for _, cluster := range c.ClusterList {
 		switch level {
 		case LevelCluster:
-			displayArray=append(displayArray,cluster.Name+" : "+cluster.Arn)
+			fmt.Println(cluster.Name," : ",cluster.Arn)
 		case LevelHost:
 			if len(cluster.Hosts.HostList) > 0 {
-				displayArray=append(displayArray,cluster.Name+" : "+cluster.Arn)
+				fmt.Println(cluster.Name," : ",cluster.Arn)
 				for _, hostLoop := range cluster.Hosts.HostList {
-					displayArray=append(displayArray,"-----"+hostLoop.Ec2Id+" : "+hostLoop.Ec2Ip)
+					fmt.Println("-----",hostLoop.Ec2Id," : ",hostLoop.Ec2Ip)
 				}
 			}
 		case LevelTask:
