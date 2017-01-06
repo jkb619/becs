@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func EcsSSH(c *cluster.Clusters,clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
+func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
@@ -42,18 +42,22 @@ func EcsSSH(c *cluster.Clusters,clusterFilter *string,hostFilter *string,taskFil
 
 				fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name)
 				dockerCmd:="docker exec -it "+dockerId+" /bin/bash"
-				sshSession:=exec.Command("ssh","-tt",*user+"@"+hostLoop.Ec2Ip,dockerCmd)
-				if err!=nil{
-					fmt.Printf("%v\n",err)
-					os.Exit(2)
-				}
-				sshSession.Stdout=os.Stdout
-				sshSession.Stderr=os.Stderr
-				//errSession:=sshSession.Start()
-				errSession:=sshSession.Run()
-				if errSession!=nil {
-					fmt.Printf("%v\n",errSession)
-					os.Exit(2)
+				if (*sshMode=="multi") {
+					// check if terminals exist
+					terminal:="x-terminal-emulator"
+					sshSession := exec.Command(terminal, "-e","ssh","-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
+					if err != nil {
+						fmt.Printf("%v\n", err)
+						os.Exit(2)
+					}
+					sshSession.Stdout = os.Stdout
+					sshSession.Stderr = os.Stderr
+					//errSession:=sshSession.Start()
+					errSession := sshSession.Run()
+					if errSession != nil {
+						fmt.Printf("%v\n", errSession)
+						os.Exit(2)
+					}
 				}
 			}
 		}
