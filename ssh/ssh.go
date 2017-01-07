@@ -63,6 +63,7 @@ func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,host
 				dockerId:=strings.TrimSpace(string(sshOut))
 				dockerCmd := "docker exec -it " + dockerId + " /bin/bash"
 				var sshSession *exec.Cmd
+				extraArgs:=[]string{}
 				if (*sshInteractive) {
 					if runtime.GOOS == "windows" {
 						sshSession = exec.Command("bash", "-c", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
@@ -70,8 +71,9 @@ func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,host
 						terminal := "none"
 						cmdOut, _ := exec.Command("which", "x-terminal-emulator").Output()
 						if len(cmdOut) != 0 {
-							//fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " with dockerIdName ",dockerId, " for", taskElement.Name)
 							terminal = "x-terminal-emulator"
+							// extraArgs to set window title pointless since gnome-terminal no longer supports it
+							//extraArgs = append(extraArgs,[]string{"-t",cluster.Name+"-"+hostLoop.Ec2Id+"-"+hostLoop.Ec2Ip+"-"+taskElement.Name}...)
 						} else {
 							cmdOut, err = exec.Command("which", "konsole").Output()
 							if len(cmdOut) != 0 {
@@ -83,17 +85,31 @@ func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,host
 								}
 							}
 						}
-						if (terminal != "none") {
-							sshSession = exec.Command(terminal, "-e", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
-						}
 
-						sshSession.Stdout = os.Stdout
-						sshSession.Stderr = os.Stderr
-						sshSession.Stdin = os.Stdin
-						errSession := sshSession.Run()
-						if errSession != nil {
-							fmt.Printf("errSession %v\n", errSession)
-							os.Exit(2)
+						if (terminal != "none") {
+							args:=append(extraArgs,[]string{"-e", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd}...)
+							sshSession = exec.Command(terminal, args...)
+
+							sshSession.Stdout = os.Stdout
+							sshSession.Stderr = os.Stderr
+							sshSession.Stdin = os.Stdin
+							errSession := sshSession.Run()
+							if errSession != nil {
+								fmt.Printf("errSession %v\n", errSession)
+								os.Exit(2)
+							}
+						} else { // single terminal...only allow one ssh session
+							args:=append(extraArgs,[]string{"-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd}...)
+							sshSession = exec.Command("ssh", args...)
+
+							sshSession.Stdout = os.Stdout
+							sshSession.Stderr = os.Stderr
+							sshSession.Stdin = os.Stdin
+							errSession := sshSession.Run()
+							if errSession != nil {
+								fmt.Printf("errSession %v\n", errSession)
+								os.Exit(2)
+							}
 						}
 					}
 				}
