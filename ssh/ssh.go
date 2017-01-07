@@ -112,6 +112,22 @@ func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,host
 							}
 						}
 					}
+				} else { // non-interactive
+					cmd:="ls -alRt"
+					if runtime.GOOS == "windows" {
+						sshOut,err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
+						if err != nil {
+							fmt.Printf("%v\n", err)
+							os.Exit(3)
+						}
+					} else {
+						sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
+						if err != nil {
+							fmt.Printf("%v\n", err)
+							os.Exit(2)
+						}
+					}
+					fmt.Println(string(sshOut))
 				}
 			}
 		}

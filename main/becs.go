@@ -17,7 +17,7 @@ func main() {
 	listTaskFilterFlag := listCommand.String("task","","task substring to match")
 
 	sshCommand := flag.NewFlagSet("list",flag.ExitOnError)
-	sshInteractive := sshCommand.Bool("mode",true,"none/single/multi. 'none' is non-interactive,single is terminal,multi is desktop")
+	sshInteractive := sshCommand.Bool("interactive",true,"true/false. ")
 	sshClusterFilterFlag := sshCommand.String("cluster","","cluster substring to match")
 	sshHostFilterFlag := sshCommand.String("host","","host substring to match")
 	sshTaskFilterFlag := sshCommand.String("task","","task substring to match")
