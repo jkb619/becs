@@ -41,21 +41,21 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilte
 	//com2.Stdout=os.Stdout
 	fmt.Println(com1.Output())
 */
-
+	var tmuxServer *exec.Cmd
 	if (*sshMode=="tmux") {
 		cmdOut, _ := exec.Command("which", "tmux").Output()
 		if len(cmdOut) == 0 {
 			fmt.Println("Requires tmux to be installed.")
 			os.Exit(2)
 		}
-		tmuxRoot := exec.Command("tmux","new-session","-s","becs")
-		tmuxRoot.Stdin = os.Stdin
-		tmuxRoot.Stdout = os.Stdout
-		tmuxRoot.Stderr = os.Stderr
+		tmuxServer = exec.Command("tmux","new-session","-d","-s","becs")
+		//tmuxRoot.Stdin = os.Stdin
+		//tmuxRoot.Stdout = os.Stdout
+		//tmuxRoot.Stderr = os.Stderr
 		fmt.Println("before starting root tmux session")
-		tmuxErr:=tmuxRoot.Run()
+		tmuxServerErr:=tmuxServer.Start()
 		fmt.Println("started root tmux session")
-		if tmuxErr !=nil {
+		if tmuxServerErr !=nil {
 			panic(err)
 		}
 	}
@@ -131,14 +131,15 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilte
 						}
 					}
 				case "tmux":
-					tmuxSession := exec.Command("tmux","new-window")
-					tmuxSession.Stdin = os.Stdin
-					tmuxSession.Stdout = os.Stdout
-					tmuxSession.Stderr = os.Stderr
+					//fmt.Println("starting 2nd window")
+					tmuxSession := exec.Command("tmux","new-window","-t","becs")
+					//tmuxSession.Stdin = os.Stdin
+					//tmuxSession.Stdout = os.Stdout
+					//tmuxSession.Stderr = os.Stderr
 
-					//fmt.Println("before starting tmux session")
 					tmuxErr:=tmuxSession.Run()
-					//fmt.Println("started tmux session")
+					//fmt.Println("started 2nd 2 window")
+
 					if tmuxErr !=nil {
 						panic(err)
 					}
@@ -174,6 +175,18 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilte
 					fmt.Println(string(sshOut))
 				}
 			}
+		}
+	}
+	if (*sshMode=="tmux") {
+		tmuxRoot := exec.Command("tmux","attach-session","-t","becs")
+		tmuxRoot.Stdin = os.Stdin
+		tmuxRoot.Stdout = os.Stdout
+		tmuxRoot.Stderr = os.Stderr
+		fmt.Println("before starting root tmux session")
+		tmuxRootErr:=tmuxRoot.Run()
+		fmt.Println("started root tmux session")
+		if tmuxRootErr !=nil {
+			panic(err)
 		}
 	}
 }
