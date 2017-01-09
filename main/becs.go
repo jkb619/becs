@@ -16,8 +16,8 @@ func main() {
 	listHostFilterFlag := listCommand.String("host","","host substring to match")
 	listTaskFilterFlag := listCommand.String("task","","task substring to match")
 
-	sshCommand := flag.NewFlagSet("list",flag.ExitOnError)
-	sshInteractive := sshCommand.Bool("interactive",true,"true/false. ")
+	sshCommand := flag.NewFlagSet("ssh",flag.ExitOnError)
+	sshMode := sshCommand.String("mode","tmux","tmux / gui / batch. ")
 	sshClusterFilterFlag := sshCommand.String("cluster","","cluster substring to match")
 	sshHostFilterFlag := sshCommand.String("host","","host substring to match")
 	sshTaskFilterFlag := sshCommand.String("task","","task substring to match")
@@ -63,7 +63,7 @@ func main() {
 	}
 	if sshCommand.Parsed() {
 		clusters := new(cluster.Clusters)
-		ecsssh.EcsSSH(clusters,sshInteractive,sshClusterFilterFlag,sshHostFilterFlag,sshTaskFilterFlag,sshUserFlag,sshPasswordFlag,sshToSendFlag)
+		ecsssh.EcsSSH(clusters,sshMode,sshClusterFilterFlag,sshHostFilterFlag,sshTaskFilterFlag,sshUserFlag,sshPasswordFlag,sshToSendFlag)
 	}
 }
 

@@ -13,7 +13,7 @@ import (
 	"runtime"
 )
 
-func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
+func EcsSSH(c *cluster.Clusters,sshMode *string, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
@@ -41,10 +41,27 @@ func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,host
 	//com2.Stdout=os.Stdout
 	fmt.Println(com1.Output())
 */
+
+	if (*sshMode=="tmux") {
+		cmdOut, _ := exec.Command("which", "tmux").Output()
+		if len(cmdOut) == 0 {
+			fmt.Println("Requires tmux to be installed.")
+			os.Exit(2)
+		}
+		tmuxRoot := exec.Command("tmux","new-session","-s","becs")
+		tmuxRoot.Stdin = os.Stdin
+		tmuxRoot.Stdout = os.Stdout
+		tmuxRoot.Stderr = os.Stderr
+		fmt.Println("before starting root tmux session")
+		tmuxErr:=tmuxRoot.Run()
+		fmt.Println("started root tmux session")
+		if tmuxErr !=nil {
+			panic(err)
+		}
+	}
 	for _, cluster := range c.ClusterList {
 		for _, hostLoop := range cluster.Hosts.HostList {
 			for _, taskElement := range hostLoop.Tasks.TaskList {
-				fmt.Println("ssh'ing to ", hostLoop.Ec2Ip, " and getting dockerIdName for", taskElement.Name)
 				var sshOut []byte
 				cmd:="docker ps |grep "+taskElement.Name+" | cut -d' ' -f1"
 				if runtime.GOOS == "windows" {
@@ -64,11 +81,12 @@ func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,host
 				dockerCmd := "docker exec -it " + dockerId + " /bin/bash"
 				var sshSession *exec.Cmd
 				extraArgs:=[]string{}
-				if (*sshInteractive) {
+				var terminal string="none"
+				switch *sshMode {
+				case "gui" :
 					if runtime.GOOS == "windows" {
 						sshSession = exec.Command("bash", "-c", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
 					} else {
-						terminal := "none"
 						cmdOut, _ := exec.Command("which", "x-terminal-emulator").Output()
 						if len(cmdOut) != 0 {
 							terminal = "x-terminal-emulator"
@@ -112,7 +130,33 @@ func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,host
 							}
 						}
 					}
-				} else { // non-interactive
+				case "tmux":
+					tmuxSession := exec.Command("tmux","new-window")
+					tmuxSession.Stdin = os.Stdin
+					tmuxSession.Stdout = os.Stdout
+					tmuxSession.Stderr = os.Stderr
+
+					//fmt.Println("before starting tmux session")
+					tmuxErr:=tmuxSession.Run()
+					//fmt.Println("started tmux session")
+					if tmuxErr !=nil {
+						panic(err)
+					}
+
+					/*
+					args:=append(extraArgs,[]string{"-e", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd}...)
+					sshSession = exec.Command(terminal, args...)
+
+					sshSession.Stdout = os.Stdout
+					sshSession.Stderr = os.Stderr
+					sshSession.Stdin = os.Stdin
+					errSession := sshSession.Run()
+					if errSession != nil {
+						fmt.Printf("errSession %v\n", errSession)
+						os.Exit(2)
+					*/
+
+				case "batch":
 					cmd:="ls -alRt"
 					if runtime.GOOS == "windows" {
 						sshOut,err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
@@ -131,6 +175,5 @@ func EcsSSH(c *cluster.Clusters,sshInteractive *bool, clusterFilter *string,host
 				}
 			}
 		}
-
 	}
 }
