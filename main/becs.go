@@ -25,6 +25,16 @@ func main() {
 	sshPasswordFlag := sshCommand.String("password","","password for user")
 	sshToSendFlag := sshCommand.String("cmd", "", "what cmd to send via ssh")
 
+
+	scpCommand := flag.NewFlagSet("scp",flag.ExitOnError)
+	//scpTarget := scpCommand.String("target","task", "host/task. Identifies which elements to ssh to.")
+	scpClusterFilterFlag := scpCommand.String("cluster","","cluster substring to match")
+	scpHostFilterFlag := scpCommand.String("host","","host substring to match")
+	scpTaskFilterFlag := scpCommand.String("task","","task substring to match")
+	scpUserFlag := scpCommand.String("user","ec2-user","user to login as")
+	scpPasswordFlag := scpCommand.String("password","","password for user")
+	scpFileToSend := scpCommand.String("file", "", "what file to send via scp")
+
 	if len(os.Args) == 1 {
 		fmt.Println("usage: becs <command> [<args>]")
 		fmt.Println("where <command> is :")
@@ -72,6 +82,8 @@ func main() {
 			fmt.Println("-mode must be either 'tmux','gui', or 'batch'")
 			os.Exit(2)
 		}
+	case "scp":
+		sshCommand.Parse(os.Args[2:])
 	default:
 		fmt.Printf("%q is invalid.\n",os.Args[1])
 		os.Exit(2)
@@ -84,6 +96,11 @@ func main() {
 	if sshCommand.Parsed() {
 		clusters := new(cluster.Clusters)
 		ecsssh.EcsSSH(clusters,mode,target,sshClusterFilterFlag,sshHostFilterFlag,sshTaskFilterFlag,sshUserFlag,sshPasswordFlag,sshToSendFlag)
+	}
+	if scpCommand.Parsed() {
+		//clusters := new(cluster.Clusters)
+		//ecsssh.EcsSCP(clusters,scpClusterFilterFlag,scpHostFilterFlag,scpTaskFilterFlag,scpUserFlag,scpPasswordFlag,scpFileToSend)
+		fmt.Println("Not implemented yet")
 	}
 }
 
