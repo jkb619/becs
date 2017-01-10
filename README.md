@@ -26,20 +26,22 @@ Batch ECS (ssh to multiple ecs containers)
 * examples *
 
 * *list all hosts and their tasks in cluster 'testcluster'*
-    * becs list -cluster=testluster
+  * becs list -cluster=testluster
 * *list just hosts in container 'testcluster' running task 'task1'*
-    * becs list -cluster=testcluster task=task1 -level=host
+  * becs list -cluster=testcluster task=task1 -level=host
 * *list everything (all clusters, hosts, and tasks), including arns*
-    * becs list -v=true
+  * becs list -v=true
     
 * *ssh to all tasks containing the string 'mytask' in cluster 'testcluster'*
-    * becs ssh -cluster=testcluster -task=mytask
+  * becs ssh -cluster=testcluster -task=mytask
 * *ssh to all hosts containing tasks with the string 'mytask' in cluster 'testcluster'*
-    * becs ssh -cluster=testcluster -task=mytask -target=hosts
+  * becs ssh -cluster=testcluster -task=mytask -target=hosts
 * *ssh to all hosts containing tasks with the string 'mytask' in all environments using gui/desktop*
-    * becs ssh -task=mytask -target=hosts -mode=gui
+  * becs ssh -task=mytask -target=hosts -mode=gui
 * *get a listing of all running process from all hosts in cluster 'testcluster'*
-    * becs ssh -mode=batch -cluster=testcluster -target=host -cmd="ps -ef"
+  * becs ssh -mode=batch -cluster=testcluster -target=host -cmd="ps -ef"
 * *get a listing of all running process from all 'mytask's in cluster 'testcluster'*
-    * becs ssh -mode=batch -cluster=testcluster -target=task -task=mytask -cmd="ps -ef"    
+  * becs ssh -mode=batch -cluster=testcluster -target=task -task=mytask -cmd="ps -ef"    
     
+Windows (ubuntu-on-windows) not tested/worked on yet.
+Darwin not tested at all.
