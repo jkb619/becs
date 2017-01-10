@@ -151,7 +151,11 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 						fmt.Println("-----", hostLoop.Ec2Id, " : ", hostLoop.Ec2Ip)
 						printHostHeader=false
 					}
-					fmt.Println("----------",taskElement.Name," : ",taskElement.Arn)
+					if (verbose) {
+						fmt.Println("----------", taskElement.Name, " : ", taskElement.Arn)
+					} else {
+						fmt.Println("----------", taskElement.Name)
+					}
 				}
 			}
 		}
