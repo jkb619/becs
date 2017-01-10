@@ -40,4 +40,6 @@ Batch ECS (ssh to multiple ecs containers)
     * becs ssh -task=mytask -target=hosts -mode=gui
 * *get a listing of all running process from all hosts in cluster 'testcluster'*
     * becs ssh -mode=batch -cluster=testcluster -target=host -cmd="ps -ef"
+* *get a listing of all running process from all 'mytask's in cluster 'testcluster'*
+    * becs ssh -mode=batch -cluster=testcluster -target=task -task=mytask -cmd="ps -ef"    
     
