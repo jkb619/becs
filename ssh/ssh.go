@@ -11,9 +11,44 @@ import (
 	"os"
 	"strings"
 	"runtime"
+	"strconv"
 )
 
-func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
+type ModeType uint8
+
+const (
+	ModeTmux=ModeType(iota)
+	ModeGui
+	ModeBatch
+)
+func (s ModeType) String() string {
+	var name = []string{"tmux","gui","batch"}
+	var i = uint8(s)
+	switch {
+	case i <= uint8(ModeBatch):
+		return name[i]
+	default:
+		return strconv.Itoa(int(i))
+	}
+}
+
+type Target uint8
+
+const (
+	TargetHost=Target(iota)
+	TargetTask
+)
+func (s Target) String() string {
+	var name = []string{"host","task"}
+	var i = uint8(s)
+	switch {
+	case i <= uint8(TargetTask):
+		return name[i]
+	default:
+		return strconv.Itoa(int(i))
+	}
+}
+func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
@@ -42,7 +77,7 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 	fmt.Println(com1.Output())
 */
 	var tmuxServer *exec.Cmd
-	if (*sshMode=="tmux") {
+	if (sshMode==ModeTmux) {
 		cmdOut, _ := exec.Command("which", "tmux").Output()
 		if len(cmdOut) == 0 {
 			fmt.Println("Requires tmux to be installed.")
@@ -57,7 +92,7 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 	for _, cluster := range c.ClusterList {
 		for _, hostLoop := range cluster.Hosts.HostList {
 			var sshOut []byte
-			if (*sshTarget=="task") {
+			if (sshTarget==TargetTask) {
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					var sshOut []byte
 					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
@@ -79,8 +114,8 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 					var sshSession *exec.Cmd
 					extraArgs := []string{}
 					var terminal string = "none"
-					switch *sshMode {
-					case "gui":
+					switch sshMode {
+					case ModeGui:
 						if runtime.GOOS == "windows" {
 							sshSession = exec.Command("bash", "-c", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
 						} else {
@@ -125,7 +160,7 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 								}
 							}
 						}
-					case "tmux":
+					case ModeTmux:
 						args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:5] + ":" + taskElement.Name[0:9], "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
 						tmuxSession := exec.Command("tmux", args...)
 						tmuxErr := tmuxSession.Run()
@@ -133,16 +168,17 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 							panic(err)
 						}
 
-					case "batch":
-						cmd := "ls -alRt"
+					case ModeBatch:
+						fmt.Println("============ ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,"):",taskElement.Arn," ==========")
+						fmt.Println("cmd: ",*toSend)
 						if runtime.GOOS == "windows" {
-							sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
+							sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
 							if err != nil {
 								fmt.Printf("%v\n", err)
 								os.Exit(3)
 							}
 						} else {
-							sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
+							sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, *toSend).Output()
 							if err != nil {
 								fmt.Printf("%v\n", err)
 								os.Exit(2)
@@ -157,16 +193,14 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 						var sshSession *exec.Cmd
 						extraArgs := []string{}
 						var terminal string = "none"
-						switch *sshMode {
-						case "gui":
+						switch sshMode {
+						case ModeGui:
 							if runtime.GOOS == "windows" {
 								sshSession = exec.Command("bash", "-c", "ssh", "-t", *user+"@"+hostLoop.Ec2Ip)
 							} else {
 								cmdOut, _ := exec.Command("which", "x-terminal-emulator").Output()
 								if len(cmdOut) != 0 {
 									terminal = "x-terminal-emulator"
-									// extraArgs to set window title pointless since gnome-terminal no longer supports it
-									//extraArgs = append(extraArgs,[]string{"-t",cluster.Name+"-"+hostLoop.Ec2Id+"-"+hostLoop.Ec2Ip+"-"+taskElement.Name}...)
 								} else {
 									cmdOut, err = exec.Command("which", "konsole").Output()
 									if len(cmdOut) != 0 {
@@ -205,7 +239,7 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 									}
 								}
 							}
-						case "tmux":
+						case ModeTmux:
 							args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:10], "ssh", "-t", *user + "@" + hostLoop.Ec2Ip}...)
 							tmuxSession := exec.Command("tmux", args...)
 							tmuxErr := tmuxSession.Run()
@@ -213,16 +247,17 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 								panic(err)
 							}
 
-						case "batch":
-							cmd := "ls -alRt"
+						case ModeBatch:
+							fmt.Println("============ ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,")"," ==========")
+							fmt.Println("cmd: ",*toSend)
 							if runtime.GOOS == "windows" {
-								sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
+								sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
 								if err != nil {
 									fmt.Printf("%v\n", err)
 									os.Exit(3)
 								}
 							} else {
-								sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
+								sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, *toSend).Output()
 								if err != nil {
 									fmt.Printf("%v\n", err)
 									os.Exit(2)
@@ -236,7 +271,7 @@ func EcsSSH(c *cluster.Clusters,sshMode *string, sshTarget *string,clusterFilter
 			}
 		}
 	}
-	if (*sshMode=="tmux") {
+	if (sshMode==ModeTmux) {
 		tmuxRoot := exec.Command("tmux","attach-session","-t","becs")
 		tmuxRoot.Stdin = os.Stdin
 		tmuxRoot.Stdout = os.Stdout

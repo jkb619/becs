@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"becs/cluster"
-	"strings"
 	"becs/ssh"
 )
 
@@ -24,7 +23,7 @@ func main() {
 	sshTaskFilterFlag := sshCommand.String("task","","task substring to match")
 	sshUserFlag := sshCommand.String("user","ec2-user","user to login as")
 	sshPasswordFlag := sshCommand.String("password","","password for user")
-	sshToSendFlag := sshCommand.String("send", "", "what to send via ssh")
+	sshToSendFlag := sshCommand.String("cmd", "", "what cmd to send via ssh")
 
 	if len(os.Args) == 1 {
 		fmt.Println("usage: becs <command> [<args>]")
@@ -34,25 +33,45 @@ func main() {
 	}
 
 	level:=cluster.LevelCluster
+	mode:=ecsssh.ModeTmux
+	target:=ecsssh.TargetTask
 	switch os.Args[1] {
 	case "list":
 		listCommand.Parse(os.Args[2:])
-		if !strings.Contains(*listLevelFlag,"cluster") &&
-			!strings.Contains(*listLevelFlag,"task") {
+		switch *listLevelFlag {
+		case "cluster":
+			level=cluster.LevelCluster
+		case "host":
+			level=cluster.LevelHost
+		case "task":
+			level=cluster.LevelTask
+		default:
 			fmt.Println("-level must be either 'cluster','host', or 'task'")
 			os.Exit(2)
-		} else {
-			switch *listLevelFlag {
-			case "cluster":
-				level=cluster.LevelCluster
-			case "host":
-				level=cluster.LevelHost
-			case "task":
-				level=cluster.LevelTask
-			}
 		}
 	case "ssh":
 		sshCommand.Parse(os.Args[2:])
+		switch *sshMode {
+		case "tmux":
+			mode=ecsssh.ModeTmux
+		case "gui":
+			mode=ecsssh.ModeGui
+		case "batch":
+			mode=ecsssh.ModeBatch
+		default:
+			fmt.Println("-mode must be either 'tmux','gui', or 'batch'")
+			os.Exit(2)
+		}
+
+		switch *sshTarget {
+		case "host":
+			target=ecsssh.TargetHost
+		case "task":
+			target=ecsssh.TargetTask
+		default:
+			fmt.Println("-mode must be either 'tmux','gui', or 'batch'")
+			os.Exit(2)
+		}
 	default:
 		fmt.Printf("%q is invalid.\n",os.Args[1])
 		os.Exit(2)
@@ -64,7 +83,7 @@ func main() {
 	}
 	if sshCommand.Parsed() {
 		clusters := new(cluster.Clusters)
-		ecsssh.EcsSSH(clusters,sshMode,sshTarget,sshClusterFilterFlag,sshHostFilterFlag,sshTaskFilterFlag,sshUserFlag,sshPasswordFlag,sshToSendFlag)
+		ecsssh.EcsSSH(clusters,mode,target,sshClusterFilterFlag,sshHostFilterFlag,sshTaskFilterFlag,sshUserFlag,sshPasswordFlag,sshToSendFlag)
 	}
 }
 
