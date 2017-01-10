@@ -98,9 +98,8 @@ func main() {
 		ecsssh.EcsSSH(clusters,mode,target,sshClusterFilterFlag,sshHostFilterFlag,sshTaskFilterFlag,sshUserFlag,sshPasswordFlag,sshToSendFlag)
 	}
 	if scpCommand.Parsed() {
-		//clusters := new(cluster.Clusters)
-		//ecsssh.EcsSCP(clusters,scpClusterFilterFlag,scpHostFilterFlag,scpTaskFilterFlag,scpUserFlag,scpPasswordFlag,scpFileToSend)
-		fmt.Println("Not implemented yet")
+		clusters := new(cluster.Clusters)
+		ecsssh.EcsSCP(clusters,scpClusterFilterFlag,scpHostFilterFlag,scpTaskFilterFlag,scpUserFlag,scpPasswordFlag,scpFileToSend)
 	}
 }
 
