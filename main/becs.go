@@ -14,6 +14,7 @@ func main() {
 	listClusterFilterFlag := listCommand.String("cluster","","cluster substring to match")
 	listHostFilterFlag := listCommand.String("host","","host substring to match")
 	listTaskFilterFlag := listCommand.String("task","","task substring to match")
+	//listVerbosity := listCommand.Bool("v",false,"verbose (true/false. Defaults false)")
 
 	sshCommand := flag.NewFlagSet("ssh",flag.ExitOnError)
 	sshTarget := sshCommand.String("target","task", "host/task. Identifies which elements to ssh to.")

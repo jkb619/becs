@@ -107,7 +107,7 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 	for _, cluster := range c.ClusterList {
 		switch level {
 		case LevelCluster:
-			fmt.Println(cluster.Name," : ",cluster.Arn)
+			fmt.Println(cluster.Name)// add for verbose option?  ," : ",cluster.Arn)
 		case LevelHost:
 			if !printClusterHeader {
 				printClusterHeader = true
