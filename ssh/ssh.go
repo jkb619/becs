@@ -49,7 +49,7 @@ func (s Target) String() string {
 		return strconv.Itoa(int(i))
 	}
 }
-func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
+func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter *string,hostFilter *string,taskFilter *string,user *string,toSend *string) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
@@ -172,7 +172,7 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 						}
 
 					case ModeBatch:
-						fmt.Println("============ ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,"):",taskElement.Arn," ==========")
+						fmt.Println("===== ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,"):",taskElement.Name,"(",dockerId,") ===== ")
 						fmt.Println("cmd: ",*toSend)
 						if runtime.GOOS == "windows" {
 							sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
@@ -181,7 +181,8 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 								os.Exit(3)
 							}
 						} else {
-							sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, *toSend).Output()
+							//sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, *toSend).Output()
+							sshOut,err = exec.Command("ssh",*user+"@"+hostLoop.Ec2Ip,"docker exec -t "+dockerId+" "+*toSend).Output()
 							if err != nil {
 								fmt.Printf("%v\n", err)
 								os.Exit(2)
@@ -251,7 +252,7 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 							}
 
 						case ModeBatch:
-							fmt.Println("============ ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,")"," ==========")
+							fmt.Println("===== ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,") =====")
 							fmt.Println("cmd: ",*toSend)
 							if runtime.GOOS == "windows" {
 								sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
@@ -289,7 +290,7 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 }
 
 
-func EcsSCP(c *cluster.Clusters, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,password *string,toSend *string) {
+func EcsSCP(c *cluster.Clusters, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,toSend *string) {
 	fmt.Println("Not implemented yet")
 	os.Exit(0)
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})

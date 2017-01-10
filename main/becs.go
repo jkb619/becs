@@ -23,7 +23,7 @@ func main() {
 	sshHostFilterFlag := sshCommand.String("host","","host substring to match")
 	sshTaskFilterFlag := sshCommand.String("task","","task substring to match")
 	sshUserFlag := sshCommand.String("user","ec2-user","user to login as")
-	sshPasswordFlag := sshCommand.String("password","","password for user")
+	//sshPasswordFlag := sshCommand.String("password","","password for user")
 	sshToSendFlag := sshCommand.String("cmd", "", "what cmd to send via ssh")
 
 
@@ -33,7 +33,7 @@ func main() {
 	scpHostFilterFlag := scpCommand.String("host","","host substring to match")
 	scpTaskFilterFlag := scpCommand.String("task","","task substring to match")
 	scpUserFlag := scpCommand.String("user","ec2-user","user to login as")
-	scpPasswordFlag := scpCommand.String("password","","password for user")
+	//scpPasswordFlag := scpCommand.String("password","","password for user")
 	scpFileToSend := scpCommand.String("file", "", "what file to send via scp")
 
 	if len(os.Args) == 1 {
@@ -96,11 +96,11 @@ func main() {
 	}
 	if sshCommand.Parsed() {
 		clusters := new(cluster.Clusters)
-		ecsssh.EcsSSH(clusters,mode,target,sshClusterFilterFlag,sshHostFilterFlag,sshTaskFilterFlag,sshUserFlag,sshPasswordFlag,sshToSendFlag)
+		ecsssh.EcsSSH(clusters,mode,target,sshClusterFilterFlag,sshHostFilterFlag,sshTaskFilterFlag,sshUserFlag,sshToSendFlag)
 	}
 	if scpCommand.Parsed() {
 		clusters := new(cluster.Clusters)
-		ecsssh.EcsSCP(clusters,scpClusterFilterFlag,scpHostFilterFlag,scpTaskFilterFlag,scpUserFlag,scpPasswordFlag,scpFileToSend)
+		ecsssh.EcsSCP(clusters,scpClusterFilterFlag,scpHostFilterFlag,scpTaskFilterFlag,scpUserFlag,scpFileToSend)
 	}
 }
 
