@@ -10,7 +10,7 @@ import (
 
 func main() {
 	listCommand := flag.NewFlagSet("list",flag.ExitOnError)
-	listLevelFlag := listCommand.String("level","task","what level to delve: cluster/task (defaults to task)")
+	listLevelFlag := listCommand.String("level","task","what level to delve: cluster/host/task (defaults to task)")
 	listClusterFilterFlag := listCommand.String("cluster","","cluster substring to match")
 	listHostFilterFlag := listCommand.String("host","","host substring to match")
 	listTaskFilterFlag := listCommand.String("task","","task substring to match")
