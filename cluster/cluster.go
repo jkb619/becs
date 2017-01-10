@@ -83,7 +83,7 @@ func (c *Clusters) GetClusterInfo(svc *ecs.ECS,clusterFilter string) {
 	}
 }
 
-func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter string, level QueryLevel) {
+func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter string, level QueryLevel, verbose bool) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
@@ -107,14 +107,22 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 	for _, cluster := range c.ClusterList {
 		switch level {
 		case LevelCluster:
-			fmt.Println(cluster.Name)// add for verbose option?  ," : ",cluster.Arn)
-		case LevelHost:
+			if (verbose) {
+				fmt.Println(cluster.Name," : ",cluster.Arn)
+			} else {
+				fmt.Println(cluster.Name)
+			}
+ 		case LevelHost:
 			if !printClusterHeader {
 				printClusterHeader = true
 			}
 			if len(cluster.Hosts.HostList) > 0 {
 				if printClusterHeader {
-					fmt.Println(cluster.Name, " : ", cluster.Arn)
+					if (verbose) {
+						fmt.Println(cluster.Name," : ",cluster.Arn)
+					} else {
+						fmt.Println(cluster.Name)
+					}
 					printClusterHeader=false
 				}
 				for _, hostLoop := range cluster.Hosts.HostList {
@@ -132,7 +140,11 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 				}
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					if printClusterHeader {
-						fmt.Println(cluster.Name," : ",cluster.Arn)
+						if (verbose) {
+							fmt.Println(cluster.Name," : ",cluster.Arn)
+						} else {
+							fmt.Println(cluster.Name)
+						}
 						printClusterHeader=false
 					}
 					if printHostHeader {
