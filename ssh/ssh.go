@@ -12,6 +12,7 @@ import (
 	"strings"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 type ModeType uint8
@@ -88,13 +89,15 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 		if tmuxServerErr !=nil {
 			panic(err)
 		}
+		time.Sleep(100*time.Millisecond)  // give the tmux server time to start..otherwise panic/nil error when trying to run against it
 	}
 	for _, cluster := range c.ClusterList {
+		var sshOut []byte
 		for _, hostLoop := range cluster.Hosts.HostList {
-			var sshOut []byte
+			sshOut=[]byte{}
 			if (sshTarget==TargetTask) {
 				for _, taskElement := range hostLoop.Tasks.TaskList {
-					var sshOut []byte
+					sshOut=[]byte{}
 					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
 					if runtime.GOOS == "windows" {
 						sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
@@ -161,7 +164,7 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 							}
 						}
 					case ModeTmux:
-						args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:5] + ":" + taskElement.Name[0:9], "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
+						args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:7] + ":" + taskElement.Name[0:9], "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
 						tmuxSession := exec.Command("tmux", args...)
 						tmuxErr := tmuxSession.Run()
 						if tmuxErr != nil {
@@ -240,7 +243,7 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 								}
 							}
 						case ModeTmux:
-							args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:10], "ssh", "-t", *user + "@" + hostLoop.Ec2Ip}...)
+							args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:7], "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip}...)
 							tmuxSession := exec.Command("tmux", args...)
 							tmuxErr := tmuxSession.Run()
 							if tmuxErr != nil {
