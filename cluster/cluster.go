@@ -93,14 +93,10 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 	ec2_svc := ec2.New(sess)
 
 	c.GetClusterInfo(svc,clusterFilter)
-	if level > LevelCluster {
-		for i := 0; i < len(c.ClusterList); i++ {
-			c.ClusterList[i].Hosts.GetHostInfo(svc, ec2_svc, c.ClusterList[i].Name, hostFilter)
-			if level > LevelHost {
-				for j :=0;j<len(c.ClusterList[i].Hosts.HostList);j++ {
-					c.ClusterList[i].Hosts.HostList[j].Tasks.GetTaskInfo(svc,ec2_svc,c.ClusterList[i].Name, c.ClusterList[i].Hosts.HostList[j].Arn, taskFilter)
-				}
-			}
+	for i := 0; i < len(c.ClusterList); i++ {
+		c.ClusterList[i].Hosts.GetHostInfo(svc, ec2_svc, c.ClusterList[i].Name, hostFilter)
+		for j :=0;j<len(c.ClusterList[i].Hosts.HostList);j++ {
+			c.ClusterList[i].Hosts.HostList[j].Tasks.GetTaskInfo(svc,ec2_svc,c.ClusterList[i].Name, c.ClusterList[i].Hosts.HostList[j].Arn, taskFilter)
 		}
 	}
 	printClusterHeader:=true
@@ -112,24 +108,7 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 			} else {
 				fmt.Println(cluster.Name)
 			}
- 		case LevelHost:
-			if !printClusterHeader {
-				printClusterHeader = true
-			}
-			if len(cluster.Hosts.HostList) > 0 {
-				if printClusterHeader {
-					if (verbose) {
-						fmt.Println(cluster.Name," : ",cluster.Arn)
-					} else {
-						fmt.Println(cluster.Name)
-					}
-					printClusterHeader=false
-				}
-				for _, hostLoop := range cluster.Hosts.HostList {
-					fmt.Println("-----",hostLoop.Ec2Id," : ",hostLoop.Ec2Ip)
-				}
-			}
-		case LevelTask:
+		case LevelTask,LevelHost:
 			if !printClusterHeader {
 				printClusterHeader = true
 			}
@@ -151,10 +130,12 @@ func (c *Clusters) List(clusterFilter string, hostFilter string, taskFilter stri
 						fmt.Println("-----", hostLoop.Ec2Id, " : ", hostLoop.Ec2Ip)
 						printHostHeader=false
 					}
-					if (verbose) {
-						fmt.Println("----------", taskElement.Name, " : ", taskElement.Arn)
-					} else {
-						fmt.Println("----------", taskElement.Name)
+					if (level==LevelTask) {
+						if (verbose) {
+							fmt.Println("----------", taskElement.Name, " : ", taskElement.Arn)
+						} else {
+							fmt.Println("----------", taskElement.Name)
+						}
 					}
 				}
 			}
