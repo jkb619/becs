@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+	"sync"
 )
 
 type ModeType uint8
@@ -49,6 +50,18 @@ func (s Target) String() string {
 		return strconv.Itoa(int(i))
 	}
 }
+func goEcsBatchSSH(clusterName string,user *string,Ec2Id string,Ec2Ip string,taskName string,dockerId string,toSend string,wg *sync.WaitGroup, ch *(chan string)) {
+	defer (*wg).Done()
+	sshOut,err := exec.Command("ssh",*user+"@"+Ec2Ip,"docker exec -t "+dockerId+" "+toSend).Output()
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(2)
+	}
+	*ch<-"===== "+clusterName+":"+Ec2Id+"("+Ec2Ip+"):"+taskName+"("+dockerId+") ===== "
+	*ch<-"cmd: "+toSend
+	*ch<-string(sshOut)
+}
+
 func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter *string,hostFilter *string,taskFilter *string,user *string,toSend *string) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
@@ -91,6 +104,9 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 		}
 		time.Sleep(100*time.Millisecond)  // give the tmux server time to start..otherwise panic/nil error when trying to run against it
 	}
+	var ch = make(chan string)
+	var wg sync.WaitGroup
+	var batchOutput=[]string{}
 	for _, cluster := range c.ClusterList {
 		var sshOut []byte
 		for _, hostLoop := range cluster.Hosts.HostList {
@@ -172,8 +188,8 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 						}
 
 					case ModeBatch:
-						fmt.Println("===== ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,"):",taskElement.Name,"(",dockerId,") ===== ")
-						fmt.Println("cmd: ",*toSend)
+						//fmt.Println("===== ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,"):",taskElement.Name,"(",dockerId,") ===== ")
+						//fmt.Println("cmd: ",*toSend)
 						if runtime.GOOS == "windows" {
 							sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
 							if err != nil {
@@ -181,14 +197,17 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 								os.Exit(3)
 							}
 						} else {
-							//sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, *toSend).Output()
+							/*
 							sshOut,err = exec.Command("ssh",*user+"@"+hostLoop.Ec2Ip,"docker exec -t "+dockerId+" "+*toSend).Output()
 							if err != nil {
 								fmt.Printf("%v\n", err)
 								os.Exit(2)
 							}
+							*/
+							wg.Add(1)
+							go goEcsBatchSSH(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,*toSend,&wg,&ch)
 						}
-						fmt.Println(string(sshOut))
+						//fmt.Println(string(sshOut))
 					}
 				}
 			} else { //just ssh to the Hosts
@@ -275,6 +294,18 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 			}
 		}
 	}
+	if (sshMode==ModeBatch) {
+		go func() {
+			wg.Wait()
+			close(ch)
+		}()
+		for m := range ch {
+			batchOutput=append(batchOutput,string(m))
+		}
+		for i := range batchOutput {
+			fmt.Println(batchOutput[i])
+		}
+	}
 	if (sshMode==ModeTmux) {
 		tmuxRoot := exec.Command("tmux","attach-session","-t","becs")
 		tmuxRoot.Stdin = os.Stdin
@@ -288,7 +319,6 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 		}
 	}
 }
-
 
 func EcsSCP(c *cluster.Clusters, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,toSend *string) {
 	fmt.Println("Not implemented yet")
