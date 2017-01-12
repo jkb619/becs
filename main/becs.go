@@ -34,7 +34,7 @@ func main() {
 	scpUserFlag := scpCommand.String("user","ec2-user","user to login as")
 	//scpPasswordFlag := scpCommand.String("password","","password for user")
 	scpFileToSend := scpCommand.String("file", "", "what file to send via scp")
-	scpTargetDir := scpCommand.String("tdir", "", "what target directory to put the file")
+	scpTargetDir := scpCommand.String("tdir", "/tmp", "what target directory to put the file")
 	scpFileRunFlag := scpCommand.Bool("x",false,"run uploaded file on target true/false (default false)")
 
 	if len(os.Args) == 1 {
