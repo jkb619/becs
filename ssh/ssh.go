@@ -331,7 +331,7 @@ func goEcsBatchSCP(clusterName string,user *string,Ec2Id string,Ec2Ip string,tas
 		goBatchOutput=append(goBatchOutput,"===== " + clusterName + ":" + Ec2Id + "(" + Ec2Ip + "):" + taskName + "(" + dockerId + ") ===== ")
 		goBatchOutput=append(goBatchOutput,"file: "+*toSend+ " put to "+Ec2Id + "(" + Ec2Ip + "):" + taskName + "(" + dockerId + ")"+" directory "+*targetDir)
 	} else {
-		sshOut, err = exec.Command("scp","ssh", *toSend,*user+"@"+Ec2Ip+":"+*targetDir).Output()
+		sshOut, err = exec.Command("scp",*toSend, *user+"@"+Ec2Ip+":"+*targetDir).Output()
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(2)
