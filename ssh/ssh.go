@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"time"
 	"sync"
+	"path/filepath"
 )
 
 type ModeType uint8
@@ -52,12 +53,23 @@ func (s Target) String() string {
 }
 func goEcsBatchSSH(clusterName string,user *string,Ec2Id string,Ec2Ip string,taskName string,dockerId string,toSend string,wg *sync.WaitGroup, ch *(chan string)) {
 	defer (*wg).Done()
-	sshOut,err := exec.Command("ssh",*user+"@"+Ec2Ip,"docker exec -t "+dockerId+" "+toSend).Output()
-	if err != nil {
-		fmt.Printf("%v\n", err)
-		os.Exit(2)
+	var sshOut []byte
+	var err error
+	if (dockerId != "") { //this is for a task
+		sshOut, err = exec.Command("ssh", *user+"@"+Ec2Ip, "docker exec -t "+dockerId+" "+toSend).Output()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			os.Exit(2)
+		}
+		*ch <- "===== " + clusterName + ":" + Ec2Id + "(" + Ec2Ip + "):" + taskName + "(" + dockerId + ") ===== "
+	} else {
+		sshOut, err = exec.Command("ssh", *user+"@"+Ec2Ip,toSend).Output()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			os.Exit(2)
+		}
+		*ch <- "===== " + clusterName + ":" + Ec2Id + "(" + Ec2Ip + ") ===== "
 	}
-	*ch<-"===== "+clusterName+":"+Ec2Id+"("+Ec2Ip+"):"+taskName+"("+dockerId+") ===== "
 	*ch<-"cmd: "+toSend
 	*ch<-string(sshOut)
 }
@@ -188,26 +200,16 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 						}
 
 					case ModeBatch:
-						//fmt.Println("===== ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,"):",taskElement.Name,"(",dockerId,") ===== ")
-						//fmt.Println("cmd: ",*toSend)
 						if runtime.GOOS == "windows" {
 							sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
 							if err != nil {
 								fmt.Printf("%v\n", err)
-								os.Exit(3)
-							}
-						} else {
-							/*
-							sshOut,err = exec.Command("ssh",*user+"@"+hostLoop.Ec2Ip,"docker exec -t "+dockerId+" "+*toSend).Output()
-							if err != nil {
-								fmt.Printf("%v\n", err)
 								os.Exit(2)
 							}
-							*/
+						} else {
 							wg.Add(1)
 							go goEcsBatchSSH(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,*toSend,&wg,&ch)
 						}
-						//fmt.Println(string(sshOut))
 					}
 				}
 			} else { //just ssh to the Hosts
@@ -271,22 +273,8 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 							}
 
 						case ModeBatch:
-							fmt.Println("===== ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,") =====")
-							fmt.Println("cmd: ",*toSend)
-							if runtime.GOOS == "windows" {
-								sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
-								if err != nil {
-									fmt.Printf("%v\n", err)
-									os.Exit(3)
-								}
-							} else {
-								sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, *toSend).Output()
-								if err != nil {
-									fmt.Printf("%v\n", err)
-									os.Exit(2)
-								}
-							}
-							fmt.Println(string(sshOut))
+							wg.Add(1)
+							go goEcsBatchSSH(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,"",*toSend,&wg,&ch)
 						}
 						break
 					}
@@ -320,9 +308,48 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 	}
 }
 
-func EcsSCP(c *cluster.Clusters, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,toSend *string) {
-	fmt.Println("Not implemented yet")
-	os.Exit(0)
+func goEcsBatchSCP(clusterName string,user *string,Ec2Id string,Ec2Ip string,taskName string,dockerId string,targetDir *string,toSend *string, runFlag *bool,wg *sync.WaitGroup, ch *(chan string)) {
+	defer (*wg).Done()
+	var sshOut []byte
+	var err error
+	_,fileName:=filepath.Split(*toSend)
+	if (dockerId != "") { //this is for a task
+		sshOut, err = exec.Command("scp", *toSend,*user+"@"+Ec2Ip+":"+"/tmp").Output()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			os.Exit(2)
+		}
+		sshOut, err = exec.Command("ssh", *user+"@"+Ec2Ip, "docker cp /tmp/"+fileName+" "+dockerId+":"+*targetDir).Output()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			os.Exit(2)
+		}
+
+
+		*ch <- "===== " + clusterName + ":" + Ec2Id + "(" + Ec2Ip + "):" + taskName + "(" + dockerId + ") ===== "
+		*ch <- "file: "+*toSend+ " put to "+Ec2Id + "(" + Ec2Ip + "):" + taskName + "(" + dockerId + ")"+" directory "+*targetDir
+	} else {
+		sshOut, err = exec.Command("scp","ssh", *toSend,*user+"@"+Ec2Ip+":"+*targetDir).Output()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			os.Exit(2)
+		}
+		*ch <- "===== " + clusterName + ":" + Ec2Id + "(" + Ec2Ip + ") ===== "
+		*ch <- "file: "+*toSend+ " put to directory "+*targetDir
+	}
+
+	if (*runFlag) {
+		sshOut, err = exec.Command("ssh", *user+"@"+Ec2Ip, *targetDir+"/"+fileName).Output()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			os.Exit(2)
+		}
+		*ch<-"Output of run:"
+		*ch<-string(sshOut)
+	}
+}
+
+func EcsSCP(c *cluster.Clusters, sshTarget Target, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,targetDir *string, toSend *string, runFlag *bool) {
 	sess, err := session.NewSession(&aws.Config{Region: aws.String("us-east-1")})
 	if err != nil {
 		fmt.Println("failed to create session,", err)
@@ -338,42 +365,67 @@ func EcsSCP(c *cluster.Clusters, clusterFilter *string,hostFilter *string,taskFi
 			c.ClusterList[i].Hosts.HostList[j].Tasks.GetTaskInfo(svc,ec2_svc,c.ClusterList[i].Name, c.ClusterList[i].Hosts.HostList[j].Arn, *taskFilter)
 		}
 	}
-	/*
-		// check what the client is using for a gui to determine if we should limit to a single ssh call
-		com1:=exec.Command("ps","-A")
-		com2:=exec.Command("egrep","-i","\"gnome|kde|mate|cinnamon|lxde|xfce|jwm\"")
-		com2.Stdin,_=com1.StdoutPipe()
-		//com1.StdoutPipe()=com1.Stdout
-		_=com2.Start()
-		_=com1.Run()
-		_=com2.Wait()
-		//com2.Stdout=os.Stdout
-		fmt.Println(com1.Output())
-	*/
+	var ch = make(chan string)
+	var wg sync.WaitGroup
+	var batchOutput=[]string{}
 	for _, cluster := range c.ClusterList {
+		var sshOut []byte
 		for _, hostLoop := range cluster.Hosts.HostList {
-			var sshOut []byte
-			for _, taskElement := range hostLoop.Tasks.TaskList {
-				if (strings.Contains(taskElement.Name, *taskFilter)) {
-					fmt.Println("============ ",cluster.Name,":",hostLoop.Ec2Id,"(",hostLoop.Ec2Ip,")"," ==========")
-					fmt.Println("cmd: ",*toSend)
+			sshOut=[]byte{}
+			if (sshTarget==TargetTask) {
+				for _, taskElement := range hostLoop.Tasks.TaskList {
+					sshOut=[]byte{}
+					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
 					if runtime.GOOS == "windows" {
-						sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
+						sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
 						if err != nil {
 							fmt.Printf("%v\n", err)
-							os.Exit(3)
+							os.Exit(2)
 						}
 					} else {
-						sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, *toSend).Output()
+						sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
 						if err != nil {
 							fmt.Printf("%v\n", err)
 							os.Exit(2)
 						}
 					}
-					fmt.Println(string(sshOut))
+					dockerId := strings.TrimSpace(string(sshOut))
+					if runtime.GOOS == "windows" {
+						sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
+						if err != nil {
+							fmt.Printf("%v\n", err)
+							os.Exit(2)
+						}
+					} else {
+						wg.Add(1)
+						go goEcsBatchSCP(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,targetDir,toSend,runFlag,&wg,&ch)
+					}
+					//fmt.Println(string(sshOut))
+
 				}
-				break
+			} else { //just sftp to the Hosts
+				for _, taskElement := range hostLoop.Tasks.TaskList {
+					if (strings.Contains(taskElement.Name, *taskFilter)) {
+						for _, taskElement := range hostLoop.Tasks.TaskList {  // copy the file to the host first
+							if (strings.Contains(taskElement.Name, *taskFilter)) {
+								wg.Add(1)
+								go goEcsBatchSCP(cluster.Name, user, hostLoop.Ec2Id, hostLoop.Ec2Ip, taskElement.Name, "", targetDir, toSend, runFlag, &wg, &ch)
+								break
+							}
+						}
+					}
+				}
 			}
 		}
+	}
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+	for m := range ch {
+		batchOutput=append(batchOutput,string(m))
+	}
+	for i := range batchOutput {
+		fmt.Println(batchOutput[i])
 	}
 }
