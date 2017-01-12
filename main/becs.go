@@ -36,6 +36,7 @@ func main() {
 	scpFileToSend := scpCommand.String("file", "", "what file to send via scp")
 	scpTargetDir := scpCommand.String("tdir", "/tmp", "what target directory to put the file")
 	scpFileRunFlag := scpCommand.Bool("x",false,"run uploaded file on target true/false (default false)")
+	scpDeleteFileAfterRun := scpCommand.Bool("d",false,"delete file after running")
 
 	if len(os.Args) == 1 {
 		fmt.Println("usage: becs <command> [<args>]")
@@ -111,7 +112,7 @@ func main() {
 	}
 	if scpCommand.Parsed() {
 		clusters := new(cluster.Clusters)
-		ecsssh.EcsSCP(clusters,target,scpClusterFilterFlag,scpHostFilterFlag,scpTaskFilterFlag,scpUserFlag,scpTargetDir,scpFileToSend,scpFileRunFlag)
+		ecsssh.EcsSCP(clusters,target,scpClusterFilterFlag,scpHostFilterFlag,scpTaskFilterFlag,scpUserFlag,scpTargetDir,scpFileToSend,scpFileRunFlag,scpDeleteFileAfterRun)
 	}
 }
 
