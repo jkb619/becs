@@ -28,6 +28,7 @@ Batch ECS (ssh to multiple ecs containers)
     * -user string user to login as (default "ec2-user")
     * -tdir string target directory for file (default "/tmp")
     * -x bool execute file/script (default false)
+    * -d bool delete file/script after running (default false)    
     
 * examples *
 
