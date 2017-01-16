@@ -1,5 +1,6 @@
 # becs
 Batch ECS (ssh to multiple ecs containers)
+relies on https://github.com/mitchellh/go-homedir
 
 *usage*
 
