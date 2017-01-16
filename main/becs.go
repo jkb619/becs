@@ -104,7 +104,7 @@ func main() {
 		case "task":
 			target=ecsssh.TargetTask
 		default:
-			fmt.Println("-mode must be either 'tmux','gui', or 'batch'")
+			fmt.Println("-target must be  'host' or 'task'")
 			os.Exit(2)
 		}
 

@@ -129,20 +129,20 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					sshOut=[]byte{}
 					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
-					if runtime.GOOS == "windows" {
+					//if runtime.GOOS == "windows" {
 					//(windows10)	sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
-						sshOut,err=exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output() // cygwin
-						if err != nil {
-							fmt.Printf("%v\n", err)
-							os.Exit(2)
-						}
-					} else {
+					//	sshOut,err=exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output() // cygwin
+					//	if err != nil {
+					//		fmt.Printf("%v\n", err)
+					//		os.Exit(2)
+					//	}
+					//} else {
 						sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
 						if err != nil {
 							fmt.Printf("%v\n", err)
 							os.Exit(2)
 						}
-					}
+					//}
 					dockerId := strings.TrimSpace(string(sshOut))
 					dockerCmd := "docker exec -it " + dockerId + " /bin/bash"
 					var sshSession *exec.Cmd
@@ -418,30 +418,30 @@ func EcsSCP(c *cluster.Clusters, sshTarget Target, clusterFilter *string,hostFil
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					sshOut=[]byte{}
 					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
-					if runtime.GOOS == "windows" {
-						sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
-						if err != nil {
-							fmt.Printf("%v\n", err)
-							os.Exit(2)
-						}
-					} else {
+					//if runtime.GOOS == "windows" {
+					//	sshOut,err=exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output() // cygwin
+					//	if err != nil {
+					//		fmt.Printf("%v\n", err)
+					//		os.Exit(2)
+					//	}
+					//} else {
 						sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
 						if err != nil {
 							fmt.Printf("%v\n", err)
 							os.Exit(2)
 						}
-					}
+					//}
 					dockerId := strings.TrimSpace(string(sshOut))
-					if runtime.GOOS == "windows" {
-						sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
-						if err != nil {
-							fmt.Printf("%v\n", err)
-							os.Exit(2)
-						}
-					} else {
+					//if runtime.GOOS == "windows" {
+					//	sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
+					//	if err != nil {
+					//		fmt.Printf("%v\n", err)
+					//		os.Exit(2)
+					//	}
+					//} else {
 						wg.Add(1)
 						go goEcsBatchSCP(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,targetDir,toSend,runFlag, deleteFlag, &wg,&ch)
-					}
+					//}
 					//fmt.Println(string(sshOut))
 
 				}
