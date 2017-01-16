@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	version:="1.0"
 	listCommand := flag.NewFlagSet("list",flag.ExitOnError)
 	listLevelFlag := listCommand.String("level","task","what level to delve: cluster/host/task (defaults to task)")
 	listClusterFilterFlag := listCommand.String("cluster","","cluster substring to match")
@@ -40,6 +41,7 @@ func main() {
 	scpDeleteFileAfterRun := scpCommand.Bool("d",false,"delete file after running")
 
 	if len(os.Args) == 1 {
+		fmt.Println("becs : Version",version)
 		fmt.Println("usage: becs <command> [<args>]")
 		fmt.Println("where <command> is :")
 		fmt.Println("list,ssh,scp")
