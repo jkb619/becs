@@ -15,6 +15,8 @@ import (
 	"time"
 	"sync"
 	"path/filepath"
+	"github.com/mitchellh/go-homedir"
+	"bufio"
 )
 
 type ModeType uint8
@@ -57,14 +59,14 @@ func goEcsBatchSSH(clusterName string,user *string,Ec2Id string,Ec2Ip string,tas
 	var err error
 	var goBatchOutput=[]string{}
 	if (dockerId != "") { //this is for a task
-		sshOut, err = exec.Command("ssh", *user+"@"+Ec2Ip, "docker exec -t "+dockerId+" "+toSend).Output()
+		sshOut, err = exec.Command("ssh",*user+"@"+Ec2Ip, "docker exec -t "+dockerId+" "+toSend).Output()
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(2)
 		}
 		goBatchOutput=append(goBatchOutput,"===== " + clusterName + ":" + Ec2Id + "(" + Ec2Ip + "):" + taskName + "(" + dockerId + ") ===== ")
 	} else {
-		sshOut, err = exec.Command("ssh", *user+"@"+Ec2Ip,toSend).Output()
+		sshOut, err = exec.Command("ssh",*user+"@"+Ec2Ip,toSend).Output()
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			os.Exit(2)
@@ -74,6 +76,23 @@ func goEcsBatchSSH(clusterName string,user *string,Ec2Id string,Ec2Ip string,tas
 	goBatchOutput=append(goBatchOutput,"cmd: "+toSend)
 	goBatchOutput=append(goBatchOutput,string(sshOut))
 	*ch<-goBatchOutput
+}
+
+func modifyKnownHosts(ip string) {
+	sshDir,_:=homedir.Dir()
+	sshDir,_ = homedir.Expand(sshDir)
+	sshDir = sshDir+"/.ssh"
+	_ = exec.Command("ssh-keygen","-R",ip)
+	sshKeyOut,_:= exec.Command("ssh-keyscan",ip).Output()
+	if runtime.GOOS=="windows" {
+
+	} else {
+		f,_:=os.OpenFile(sshDir+"/known_hosts",os.O_RDWR|os.O_APPEND,0600)
+		buffw:=bufio.NewWriter(f)
+		defer f.Close()
+		buffw.Write(sshKeyOut)
+		buffw.Flush()
+	}
 }
 
 func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter *string,hostFilter *string,taskFilter *string,user *string,toSend *string) {
@@ -124,25 +143,18 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 	for _, cluster := range c.ClusterList {
 		var sshOut []byte
 		for _, hostLoop := range cluster.Hosts.HostList {
+			modifyKnownHosts(hostLoop.Ec2Ip)
 			sshOut=[]byte{}
 			if (sshTarget==TargetTask) {
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					sshOut=[]byte{}
 					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
-					//if runtime.GOOS == "windows" {
-					//(windows10)	sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
-					//	sshOut,err=exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output() // cygwin
-					//	if err != nil {
-					//		fmt.Printf("%v\n", err)
-					//		os.Exit(2)
-					//	}
-					//} else {
-						sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
-						if err != nil {
-							fmt.Printf("%v\n", err)
-							os.Exit(2)
-						}
-					//}
+					fmt.Println("ssh", *user+"@"+hostLoop.Ec2Ip, cmd)
+					sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
+					if err != nil {
+						fmt.Printf("%v\n", err)
+						os.Exit(2)
+					}
 					dockerId := strings.TrimSpace(string(sshOut))
 					dockerCmd := "docker exec -it " + dockerId + " /bin/bash"
 					var sshSession *exec.Cmd
@@ -205,7 +217,7 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 							}
 						}
 					case ModeTmux:
-						args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:7] + ":" + taskElement.Name[0:9], "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
+						args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:7] + ":" + taskElement.Name[0:9], "ssh","-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
 						tmuxSession := exec.Command("tmux", args...)
 						tmuxErr := tmuxSession.Run()
 						if tmuxErr != nil {
@@ -371,7 +383,7 @@ func goEcsBatchSCP(clusterName string,user *string,Ec2Id string,Ec2Ip string,tas
 			goBatchOutput=append(goBatchOutput,"Output of run:")
 			goBatchOutput=append(goBatchOutput,string(sshOut))
 			if (*deleteFlag) {
-				sshOut, err = exec.Command("ssh", *user+"@"+Ec2Ip, "docker exec -t "+dockerId+" rm -f "+*targetDir+"/"+fileName).Output() //delete file
+				sshOut, err = exec.Command("ssh",*user+"@"+Ec2Ip, "docker exec -t "+dockerId+" rm -f "+*targetDir+"/"+fileName).Output() //delete file
 				goBatchOutput=append(goBatchOutput,"Deleted "+*targetDir+"/"+fileName+" from "+dockerId)
 			}
 		}else {
@@ -413,37 +425,20 @@ func EcsSCP(c *cluster.Clusters, sshTarget Target, clusterFilter *string,hostFil
 	for _, cluster := range c.ClusterList {
 		var sshOut []byte
 		for _, hostLoop := range cluster.Hosts.HostList {
+			modifyKnownHosts(hostLoop.Ec2Ip)
 			sshOut=[]byte{}
 			if (sshTarget==TargetTask) {
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					sshOut=[]byte{}
 					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
-					//if runtime.GOOS == "windows" {
-					//	sshOut,err=exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output() // cygwin
-					//	if err != nil {
-					//		fmt.Printf("%v\n", err)
-					//		os.Exit(2)
-					//	}
-					//} else {
-						sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
-						if err != nil {
-							fmt.Printf("%v\n", err)
-							os.Exit(2)
-						}
-					//}
+					sshOut, err = exec.Command("ssh",*user+"@"+hostLoop.Ec2Ip, cmd).Output()
+					if err != nil {
+						fmt.Printf("%v\n", err)
+						os.Exit(2)
+					}
 					dockerId := strings.TrimSpace(string(sshOut))
-					//if runtime.GOOS == "windows" {
-					//	sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
-					//	if err != nil {
-					//		fmt.Printf("%v\n", err)
-					//		os.Exit(2)
-					//	}
-					//} else {
-						wg.Add(1)
-						go goEcsBatchSCP(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,targetDir,toSend,runFlag, deleteFlag, &wg,&ch)
-					//}
-					//fmt.Println(string(sshOut))
-
+					wg.Add(1)
+					go goEcsBatchSCP(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,targetDir,toSend,runFlag, deleteFlag, &wg,&ch)
 				}
 			} else { //just sftp to the Hosts
 				for _, taskElement := range hostLoop.Tasks.TaskList {
