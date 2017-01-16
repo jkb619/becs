@@ -130,10 +130,11 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 					sshOut=[]byte{}
 					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
 					if runtime.GOOS == "windows" {
-						sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
+					//(windows10)	sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+cmd+"'").Output()
+						sshOut,err=exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output() // cygwin
 						if err != nil {
 							fmt.Printf("%v\n", err)
-							os.Exit(3)
+							os.Exit(2)
 						}
 					} else {
 						sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
@@ -150,7 +151,17 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 					switch sshMode {
 					case ModeGui:
 						if runtime.GOOS == "windows" {
-							sshSession = exec.Command("bash", "-c", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
+							//(windows10) sshSession = exec.Command("bash", "-c", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
+							args := append(extraArgs, []string{"/C","start","ssh","-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
+							sshSession = exec.Command("cmd",args...)
+							sshSession.Stdout = os.Stdout
+							sshSession.Stderr = os.Stderr
+							sshSession.Stdin = os.Stdin
+							errSession := sshSession.Run()
+							if errSession != nil {
+								fmt.Printf("errSession %v\n", errSession)
+								os.Exit(2)
+							}
 						} else {
 							cmdOut, _ := exec.Command("which", "x-terminal-emulator").Output()
 							if len(cmdOut) != 0 {
@@ -202,16 +213,16 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 						}
 
 					case ModeBatch:
-						if runtime.GOOS == "windows" {
-							sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
-							if err != nil {
-								fmt.Printf("%v\n", err)
-								os.Exit(2)
-							}
-						} else {
+						//if runtime.GOOS == "windows" {
+						//	sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
+						//	if err != nil {
+						//		fmt.Printf("%v\n", err)
+						//		os.Exit(2)
+						//	}
+						//} else {
 							wg.Add(1)
 							go goEcsBatchSSH(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,*toSend,&wg,&ch)
-						}
+						//}
 					}
 				}
 			} else { //just ssh to the Hosts
@@ -223,7 +234,17 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 						switch sshMode {
 						case ModeGui:
 							if runtime.GOOS == "windows" {
-								sshSession = exec.Command("bash", "-c", "ssh", "-t", *user+"@"+hostLoop.Ec2Ip)
+								args := append(extraArgs, []string{"/C","start","ssh","-tt", *user + "@" + hostLoop.Ec2Ip}...)
+								fmt.Println(args)
+								sshSession = exec.Command("cmd",args...)
+								sshSession.Stdout = os.Stdout
+								sshSession.Stderr = os.Stderr
+								sshSession.Stdin = os.Stdin
+								errSession := sshSession.Run()
+								if errSession != nil {
+									fmt.Printf("errSession %v\n", errSession)
+									os.Exit(2)
+								}
 							} else {
 								cmdOut, _ := exec.Command("which", "x-terminal-emulator").Output()
 								if len(cmdOut) != 0 {

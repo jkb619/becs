@@ -6,6 +6,7 @@ import (
 	"os"
 	"becs/cluster"
 	"becs/ssh"
+	"runtime"
 )
 
 func main() {
@@ -64,6 +65,14 @@ func main() {
 		}
 	case "ssh":
 		sshCommand.Parse(os.Args[2:])
+
+		if runtime.GOOS == "windows" && *sshMode=="tmux" {
+			*sshMode="gui"
+		}
+		if *sshCmdToRun != "" {
+			*sshMode="batch"
+		}
+
 		switch *sshMode {
 		case "tmux":
 			mode=ecsssh.ModeTmux
