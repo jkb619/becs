@@ -39,6 +39,15 @@ func (t *Tasks) describeTasks(svc *ecs.ECS, ec2_svc *ec2.EC2, taskArn *string, c
 	}
 }
 
+func (t *Tasks) appendTaskIfAbsent(m Task) {
+	for _,n := range t.TaskList {
+		if m.Name == n.Name {
+			return
+		}
+	}
+	t.TaskList = append(t.TaskList, m)
+}
+
 func (t *Tasks) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,instanceArn string, taskFilter string) {
 	pageNum := 0
 	var task_ch=make(chan []Task)
@@ -67,6 +76,6 @@ func (t *Tasks) GetTaskInfo (svc *ecs.ECS, ec2_svc *ec2.EC2, clusterName string,
 		close(task_ch)
 	}()
 	for m := range task_ch {
-		t.TaskList = append(t.TaskList,m[0])
+		t.appendTaskIfAbsent(m[0])
 	}
 }

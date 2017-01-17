@@ -53,12 +53,12 @@ func (s Target) String() string {
 		return strconv.Itoa(int(i))
 	}
 }
-func goEcsBatchSSH(clusterName string,user *string,Ec2Id string,Ec2Ip string,taskName string,dockerId string,toSend string,wg *sync.WaitGroup, ch *(chan []string)) {
+func goEcsBatchSSH(clusterName string,user *string,Ec2Id string,Ec2Ip string,taskName string,dockerId string,sshTarget Target, toSend string,wg *sync.WaitGroup, ch *(chan []string)) {
 	defer (*wg).Done()
 	var sshOut []byte
 	var err error
 	var goBatchOutput=[]string{}
-	if (dockerId != "") { //this is for a task
+	if (sshTarget==TargetTask) {
 		sshOut, err = exec.Command("ssh",*user+"@"+Ec2Ip, "docker exec -t "+dockerId+" "+toSend).Output()
 		if err != nil {
 			fmt.Printf("%v\n", err)
@@ -149,92 +149,94 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					sshOut=[]byte{}
 					cmd := "docker ps |grep " + taskElement.Name + " | cut -d' ' -f1"
-					fmt.Println("ssh", *user+"@"+hostLoop.Ec2Ip, cmd)
 					sshOut, err = exec.Command("ssh", *user+"@"+hostLoop.Ec2Ip, cmd).Output()
 					if err != nil {
 						fmt.Printf("%v\n", err)
 						os.Exit(2)
 					}
-					dockerId := strings.TrimSpace(string(sshOut))
-					dockerCmd := "docker exec -it " + dockerId + " /bin/bash"
-					var sshSession *exec.Cmd
-					extraArgs := []string{}
-					var terminal string = "none"
-					switch sshMode {
-					case ModeGui:
-						if runtime.GOOS == "windows" {
-							//(windows10) sshSession = exec.Command("bash", "-c", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
-							args := append(extraArgs, []string{"/C","start","ssh","-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
-							sshSession = exec.Command("cmd",args...)
-							sshSession.Stdout = os.Stdout
-							sshSession.Stderr = os.Stderr
-							sshSession.Stdin = os.Stdin
-							errSession := sshSession.Run()
-							if errSession != nil {
-								fmt.Printf("errSession %v\n", errSession)
-								os.Exit(2)
-							}
-						} else {
-							cmdOut, _ := exec.Command("which", "x-terminal-emulator").Output()
-							if len(cmdOut) != 0 {
-								terminal = "x-terminal-emulator"
+					dockerIdArray := strings.Split(strings.TrimSpace(string(sshOut)),"\n")
+					for _,dockerId := range dockerIdArray { // for cases where the same name is on the same host multiple times but w/different docker IDs
+						dockerId = strings.TrimSpace(string(dockerId))
+						dockerCmd := "docker exec -it " + dockerId + " /bin/bash"
+						var sshSession *exec.Cmd
+						extraArgs := []string{}
+						var terminal string = "none"
+						switch sshMode {
+						case ModeGui:
+							if runtime.GOOS == "windows" {
+								//(windows10) sshSession = exec.Command("bash", "-c", "ssh", "-tt", *user+"@"+hostLoop.Ec2Ip, dockerCmd)
+								args := append(extraArgs, []string{"/C", "start", "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
+								sshSession = exec.Command("cmd", args...)
+								sshSession.Stdout = os.Stdout
+								sshSession.Stderr = os.Stderr
+								sshSession.Stdin = os.Stdin
+								errSession := sshSession.Run()
+								if errSession != nil {
+									fmt.Printf("errSession %v\n", errSession)
+									os.Exit(2)
+								}
 							} else {
-								cmdOut, err = exec.Command("which", "konsole").Output()
+								cmdOut, _ := exec.Command("which", "x-terminal-emulator").Output()
 								if len(cmdOut) != 0 {
-									terminal = "konsole"
+									terminal = "x-terminal-emulator"
 								} else {
-									cmdOut, err = exec.Command("which", "xterm").Output()
+									cmdOut, err = exec.Command("which", "konsole").Output()
 									if len(cmdOut) != 0 {
-										terminal = "xterm"
+										terminal = "konsole"
+									} else {
+										cmdOut, err = exec.Command("which", "xterm").Output()
+										if len(cmdOut) != 0 {
+											terminal = "xterm"
+										}
+									}
+								}
+
+								if (terminal != "none") {
+									args := append(extraArgs, []string{"-e", "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
+									sshSession = exec.Command(terminal, args...)
+
+									sshSession.Stdout = os.Stdout
+									sshSession.Stderr = os.Stderr
+									sshSession.Stdin = os.Stdin
+									errSession := sshSession.Run()
+									if errSession != nil {
+										fmt.Printf("errSession %v\n", errSession)
+										os.Exit(2)
+									}
+								} else { // single terminal...only allow one ssh session
+									args := append(extraArgs, []string{"-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
+									sshSession = exec.Command("ssh", args...)
+
+									sshSession.Stdout = os.Stdout
+									sshSession.Stderr = os.Stderr
+									sshSession.Stdin = os.Stdin
+									errSession := sshSession.Run()
+									if errSession != nil {
+										fmt.Printf("errSession %v\n", errSession)
+										os.Exit(2)
 									}
 								}
 							}
-
-							if (terminal != "none") {
-								args := append(extraArgs, []string{"-e", "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
-								sshSession = exec.Command(terminal, args...)
-
-								sshSession.Stdout = os.Stdout
-								sshSession.Stderr = os.Stderr
-								sshSession.Stdin = os.Stdin
-								errSession := sshSession.Run()
-								if errSession != nil {
-									fmt.Printf("errSession %v\n", errSession)
-									os.Exit(2)
-								}
-							} else { // single terminal...only allow one ssh session
-								args := append(extraArgs, []string{"-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
-								sshSession = exec.Command("ssh", args...)
-
-								sshSession.Stdout = os.Stdout
-								sshSession.Stderr = os.Stderr
-								sshSession.Stdin = os.Stdin
-								errSession := sshSession.Run()
-								if errSession != nil {
-									fmt.Printf("errSession %v\n", errSession)
-									os.Exit(2)
-								}
+						case ModeTmux:
+							args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:7] + ":" + taskElement.Name[0:9], "ssh", "-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
+							tmuxSession := exec.Command("tmux", args...)
+							tmuxErr := tmuxSession.Run()
+							if tmuxErr != nil {
+								panic(err)
 							}
-						}
-					case ModeTmux:
-						args := append(extraArgs, []string{"new-window", "-t", "becs", "-n", hostLoop.Ec2Id[2:7] + ":" + taskElement.Name[0:9], "ssh","-tt", *user + "@" + hostLoop.Ec2Ip, dockerCmd}...)
-						tmuxSession := exec.Command("tmux", args...)
-						tmuxErr := tmuxSession.Run()
-						if tmuxErr != nil {
-							panic(err)
-						}
 
-					case ModeBatch:
-						//if runtime.GOOS == "windows" {
-						//	sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
-						//	if err != nil {
-						//		fmt.Printf("%v\n", err)
-						//		os.Exit(2)
-						//	}
-						//} else {
+						case ModeBatch:
+							//if runtime.GOOS == "windows" {
+							//	sshOut, err = exec.Command("bash", "-c", "'ssh "+*user+"@"+hostLoop.Ec2Ip+" "+*toSend+"'").Output()
+							//	if err != nil {
+							//		fmt.Printf("%v\n", err)
+							//		os.Exit(2)
+							//	}
+							//} else {
 							wg.Add(1)
-							go goEcsBatchSSH(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,*toSend,&wg,&ch)
+							go goEcsBatchSSH(cluster.Name, user, hostLoop.Ec2Id, hostLoop.Ec2Ip, taskElement.Name, dockerId, sshTarget, *toSend, &wg, &ch)
 						//}
+						}
 					}
 				}
 			} else { //just ssh to the Hosts
@@ -309,7 +311,7 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 
 						case ModeBatch:
 							wg.Add(1)
-							go goEcsBatchSSH(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,"",*toSend,&wg,&ch)
+							go goEcsBatchSSH(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,"",sshTarget,*toSend,&wg,&ch)
 						}
 						break
 					}
@@ -343,21 +345,24 @@ func EcsSSH(c *cluster.Clusters,sshMode ModeType, sshTarget Target,clusterFilter
 	}
 }
 
-func goEcsBatchSCP(clusterName string,user *string,Ec2Id string,Ec2Ip string,taskName string,dockerId string,targetDir *string,toSend *string, runFlag *bool, deleteFlag *bool, wg *sync.WaitGroup, ch *(chan []string)) {
+func goEcsBatchSCP(clusterName string,user *string,Ec2Id string,Ec2Ip string,taskName string,dockerId string,sshTarget Target, targetDir *string,toSend *string, runFlag *bool, deleteFlag *bool, wg *sync.WaitGroup, ch *(chan []string)) {
 	defer (*wg).Done()
 	var sshOut []byte
 	var err error
 	var goBatchOutput=[]string{}
 	_,fileName:=filepath.Split(*toSend)
-	if (dockerId != "") { //this is for a task
+	if (sshTarget==TargetTask) {
+	//if (dockerId != "") { //this is for a task
 		hostFileRename:=dockerId+"-"+fileName
 		sshOut, err = exec.Command("scp", *toSend,*user+"@"+Ec2Ip+":"+"/tmp/"+hostFileRename).Output()  //prepend the dockerID to prevent collisions for big batches
 		if err != nil {
+			fmt.Println("FAIL: scp", *toSend,*user+"@"+Ec2Ip+":"+"/tmp/"+hostFileRename)
 			fmt.Printf("%v\n", err)
 			os.Exit(2)
 		}
 		sshOut, err = exec.Command("ssh", *user+"@"+Ec2Ip, "docker cp /tmp/"+hostFileRename+" "+dockerId+":"+*targetDir+"/"+fileName+" && rm -f /tmp/"+hostFileRename).Output() //prepend the dockerID on the host
 		if err != nil {
+			fmt.Println("FAIL: ssh", *user+"@"+Ec2Ip, "docker cp /tmp/"+hostFileRename+" "+dockerId+":"+*targetDir+"/"+fileName+" && rm -f /tmp/"+hostFileRename)
 			fmt.Printf("%v\n", err)
 			os.Exit(2)
 		}
@@ -436,9 +441,12 @@ func EcsSCP(c *cluster.Clusters, sshTarget Target, clusterFilter *string,hostFil
 						fmt.Printf("%v\n", err)
 						os.Exit(2)
 					}
-					dockerId := strings.TrimSpace(string(sshOut))
-					wg.Add(1)
-					go goEcsBatchSCP(cluster.Name,user,hostLoop.Ec2Id,hostLoop.Ec2Ip,taskElement.Name,dockerId,targetDir,toSend,runFlag, deleteFlag, &wg,&ch)
+					dockerIdArray := strings.Split(strings.TrimSpace(string(sshOut)),"\n")
+					for _,dockerId := range dockerIdArray { // for cases where the same name is on the same host multiple times but w/different docker IDs
+						dockerId = strings.TrimSpace(string(dockerId))
+						wg.Add(1)
+						go goEcsBatchSCP(cluster.Name, user, hostLoop.Ec2Id, hostLoop.Ec2Ip, taskElement.Name, dockerId, sshTarget, targetDir, toSend, runFlag, deleteFlag, &wg, &ch)
+					}
 				}
 			} else { //just sftp to the Hosts
 				for _, taskElement := range hostLoop.Tasks.TaskList {
@@ -446,7 +454,7 @@ func EcsSCP(c *cluster.Clusters, sshTarget Target, clusterFilter *string,hostFil
 						for _, taskElement := range hostLoop.Tasks.TaskList {  // copy the file to the host first
 							if (strings.Contains(taskElement.Name, *taskFilter)) {
 								wg.Add(1)
-								go goEcsBatchSCP(cluster.Name, user, hostLoop.Ec2Id, hostLoop.Ec2Ip, taskElement.Name, "", targetDir, toSend, runFlag, deleteFlag, &wg, &ch)
+								go goEcsBatchSCP(cluster.Name, user, hostLoop.Ec2Id, hostLoop.Ec2Ip, taskElement.Name, "", sshTarget, targetDir, toSend, runFlag, deleteFlag, &wg, &ch)
 								break
 							}
 						}
