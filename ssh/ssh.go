@@ -371,6 +371,7 @@ func goEcsBatchSCP(clusterName string,user *string,Ec2Id string,Ec2Ip string,tas
 	} else {
 		sshOut, err = exec.Command("scp",*toSend, *user+"@"+Ec2Ip+":"+*targetDir).Output()
 		if err != nil {
+			fmt.Println("FAIL: scp",*toSend, *user+"@"+Ec2Ip+":"+*targetDir)
 			fmt.Printf("%v\n", err)
 			os.Exit(2)
 		}
@@ -406,6 +407,15 @@ func goEcsBatchSCP(clusterName string,user *string,Ec2Id string,Ec2Ip string,tas
 		}
 	}
 	*ch<-goBatchOutput
+}
+
+func stringInSlice(element string, list []string) bool {
+	for _, b := range list {
+		if b == element {
+			return true
+		}
+	}
+	return false
 }
 
 func EcsSCP(c *cluster.Clusters, sshTarget Target, clusterFilter *string,hostFilter *string,taskFilter *string,user *string,targetDir *string, toSend *string, runFlag *bool, deleteFlag *bool) {
@@ -449,13 +459,17 @@ func EcsSCP(c *cluster.Clusters, sshTarget Target, clusterFilter *string,hostFil
 					}
 				}
 			} else { //just sftp to the Hosts
+				alreadyWrittenHosts:=[]string{}
 				for _, taskElement := range hostLoop.Tasks.TaskList {
 					if (strings.Contains(taskElement.Name, *taskFilter)) {
 						for _, taskElement := range hostLoop.Tasks.TaskList {  // copy the file to the host first
 							if (strings.Contains(taskElement.Name, *taskFilter)) {
-								wg.Add(1)
-								go goEcsBatchSCP(cluster.Name, user, hostLoop.Ec2Id, hostLoop.Ec2Ip, taskElement.Name, "", sshTarget, targetDir, toSend, runFlag, deleteFlag, &wg, &ch)
-								break
+								if !stringInSlice(hostLoop.Ec2Ip,alreadyWrittenHosts) {
+									alreadyWrittenHosts=append(alreadyWrittenHosts,hostLoop.Ec2Ip)
+									wg.Add(1)
+									go goEcsBatchSCP(cluster.Name, user, hostLoop.Ec2Id, hostLoop.Ec2Ip, taskElement.Name, "", sshTarget, targetDir, toSend, runFlag, deleteFlag, &wg, &ch)
+									break
+								}
 							}
 						}
 					}
